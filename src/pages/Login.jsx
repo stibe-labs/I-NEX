@@ -60,7 +60,7 @@ const Login = () => {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem' }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: '400px' }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem 1.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img src="/INEX final logo-04.png" alt="I-NEX Logo" style={{ height: '48px', marginBottom: '0.5rem' }} />
           <p style={{ color: 'var(--text-secondary)' }}>Sign in to your account</p>
