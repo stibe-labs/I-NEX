@@ -85,7 +85,8 @@ export const addEmployee = async (employeeName, phoneNo) => {
       body: JSON.stringify({
         first_name: employeeName,
         status: 'Active',
-        gender: 'Male', // defaults since it's usually required, could be made dynamic
+        gender: 'Male', // defaults since it's usually required
+        date_of_birth: '2000-01-01', // Dummy DOB to satisfy ERPNext Mandatory Field
         date_of_joining: new Date().toISOString().split('T')[0],
         cell_number: phoneNo,
         // Frappe might require 'custom_phone' instead depending on setup, but cell_number is standard
