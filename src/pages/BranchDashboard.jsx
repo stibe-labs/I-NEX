@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import { PlusCircle, Clock } from 'lucide-react';
+import { Search, PlusCircle, Clock, Users, BookOpen, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { fetchProjects } from '../api/frappeClient';
@@ -88,12 +87,27 @@ const BranchDashboard = () => {
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <PlusCircle size={20} color="var(--primary-color)" /> Quick Links
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <Link to="/customers" className="btn" style={{ background: 'rgba(255,255,255,0.05)', justifyContent: 'flex-start' }}>
-              Add Customer Details
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <Link to="/customers" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--primary-color)' }}>
+                <Users size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Add Customer Details</h4>
+                <p>Create new job cards and customer records</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
-            <Link to="/daybook" className="btn" style={{ background: 'rgba(255,255,255,0.05)', justifyContent: 'flex-start' }}>
-              Update Day Book
+
+            <Link to="/daybook" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--primary-color)' }}>
+                <BookOpen size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Update Day Book</h4>
+                <p>Manage daily income and expenses</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
           </div>
         </div>
