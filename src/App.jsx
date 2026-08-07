@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X } from 'lucide-react';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -107,6 +108,20 @@ const DashboardRouter = () => {
 function App() {
   return (
     <AuthProvider>
+      <Toaster 
+        position="top-center" 
+        toastOptions={{
+          style: {
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.05)',
+            color: 'var(--text-primary)',
+            fontSize: '0.9rem',
+            padding: '1rem 1.5rem',
+          }
+        }} 
+      />
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />

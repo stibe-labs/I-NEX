@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProjects, createProject } from '../api/frappeClient';
 import { Plus, Save, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
 const DayBook = () => {
@@ -27,6 +28,7 @@ const DayBook = () => {
       setProjects(data);
     } catch (e) {
       console.error(e);
+      toast.error("Failed to load projects");
     } finally {
       setLoading(false);
     }
@@ -38,7 +40,7 @@ const DayBook = () => {
 
   const handleSave = async () => {
     if(!formData.job_card || !formData.customer_name) {
-      alert("Job Card Code and Customer Name are required");
+      toast.error("Job Card Code and Customer Name are required");
       return;
     }
     
@@ -55,6 +57,7 @@ const DayBook = () => {
       };
       
       await createProject(projectData);
+      toast.success("DayBook Entry Created!");
       
       await loadData();
       setIsAdding(false);
@@ -64,7 +67,7 @@ const DayBook = () => {
         cost: '', profit: ''
       });
     } catch (e) {
-      alert("Failed to save to Frappe.");
+      toast.error("Failed to save to Frappe.");
     } finally {
       setIsSaving(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProjects, createProject } from '../api/frappeClient';
 import { Plus, Save, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
 const CustomerDetails = () => {
@@ -38,7 +39,7 @@ const CustomerDetails = () => {
 
   const handleSave = async () => {
     if(!formData.code || !formData.name) {
-      alert("Job Card Code and Customer Name are required");
+      toast.error("Job Card Code and Customer Name are required");
       return;
     }
     
@@ -58,6 +59,7 @@ const CustomerDetails = () => {
       };
       
       await createProject(projectData);
+      toast.success('Customer Details Saved!');
       
       // Reload and reset
       await loadData();
@@ -68,7 +70,7 @@ const CustomerDetails = () => {
         update: '', delivery: ''
       });
     } catch (e) {
-      alert("Failed to save to Frappe. See console.");
+      toast.error("Failed to save to Frappe. See console.");
     } finally {
       setIsSaving(false);
     }

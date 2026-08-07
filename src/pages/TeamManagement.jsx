@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Wrench, Building, Eye, EyeOff, Users, Shield, Edit2, X, Trash2 } from 'lucide-react';
+import { UserPlus, Wrench, Building, Eye, EyeOff, Users, Shield, Edit2, X, Trash2, AlertTriangle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { addEmployee, addBranchUser, fetchEmployees, fetchUsers, updateBranchUser, deleteEmployee } from '../api/frappeClient';
 
 const TeamManagement = () => {
@@ -24,9 +25,12 @@ const TeamManagement = () => {
 
   // Edit User State
   const [editingUser, setEditingUser] = useState(null);
-  const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
+  const [editEnabled, setEditEnabled] = useState(true);
   const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // Delete Confirm State
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -60,12 +64,12 @@ const TeamManagement = () => {
     if(!staffName || !staffPhone) return;
     try {
       await addEmployee(staffName, staffPhone);
-      alert('Staff created successfully!');
       setStaffName('');
       setStaffPhone('');
       loadData();
+      toast.success('Staff created successfully!');
     } catch(err) {
-      alert('Failed to create staff. Check console for details.');
+      toast.error('Failed to create staff.');
     }
   };
 
@@ -74,12 +78,12 @@ const TeamManagement = () => {
     if(!techName || !techPhone) return;
     try {
       await addEmployee(techName, techPhone);
-      alert('Technician created successfully!');
       setTechName('');
       setTechPhone('');
       loadData();
+      toast.success('Technician created successfully!');
     } catch(err) {
-      alert('Failed to create technician. Check console for details.');
+      toast.error('Failed to create technician.');
     }
   };
 
@@ -88,44 +92,44 @@ const TeamManagement = () => {
     if(!branchName || !branchUsername || !branchPassword) return;
     try {
       await addBranchUser(branchName, branchUsername, branchPassword);
-      alert('Branch User created successfully!');
       setBranchName('');
       setBranchUsername('');
       setBranchPassword('');
       loadData();
+      toast.success('Branch User created successfully!');
     } catch(err) {
-      alert('Failed to create branch user. Check console for details.');
+      toast.error('Failed to create branch user.');
     }
   };
 
   const openEditModal = (user) => {
     setEditingUser(user);
-    setEditUsername(user.username || user.email || user.name);
+    setEditEnabled(user.enabled === 1);
     setEditPassword('');
     setShowEditPassword(false);
   };
 
-  const handleUpdateBranch = async (e) => {
+  const handleEditUser = async (e) => {
     e.preventDefault();
-    if(!editingUser) return;
     try {
-      await updateBranchUser(editingUser.name, editUsername, editPassword);
-      alert('Branch User updated successfully!');
+      await updateBranchUser(editingUser.name, editEnabled, editPassword);
       setEditingUser(null);
       loadData();
-    } catch (err) {
-      alert('Failed to update branch user. Keep in mind Frappe restricts changing the primary email ID directly via API for security reasons. Check console for details.');
+      toast.success('User updated successfully');
+    } catch(err) {
+      toast.error('Failed to update user.');
     }
   };
 
-  const handleDeleteEmployee = async (employeeId) => {
-    if (!window.confirm(`Are you sure you want to delete this employee?`)) return;
+  const handleDeleteEmployee = async () => {
+    if (!employeeToDelete) return;
     try {
-      await deleteEmployee(employeeId);
+      await deleteEmployee(employeeToDelete);
+      setEmployeeToDelete(null);
       loadData();
-      alert('Employee deleted successfully');
+      toast.success('Employee deleted successfully');
     } catch(err) {
-      alert('Failed to delete employee. Check console for details.');
+      toast.error('Failed to delete employee.');
     }
   };
 
@@ -188,6 +192,34 @@ const TeamManagement = () => {
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {employeeToDelete && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ 
+              width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', 
+              color: 'var(--danger-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 1.5rem auto'
+            }}>
+              <AlertTriangle size={24} />
+            </div>
+            <h3 style={{ marginBottom: '0.5rem' }}>Delete Employee?</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem', lineHeight: '1.5' }}>
+              Are you sure you want to delete this employee? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setEmployeeToDelete(null)} className="btn" style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.05)' }}>Cancel</button>
+              <button onClick={handleDeleteEmployee} className="btn" style={{ flex: 1, backgroundColor: 'var(--danger-color)', color: 'white' }}>Delete</button>
+            </div>
           </div>
         </div>
       )}
@@ -321,7 +353,7 @@ const TeamManagement = () => {
                       </td>
                       <td>
                         <button 
-                          onClick={() => handleDeleteEmployee(emp.name)}
+                          onClick={() => setEmployeeToDelete(emp.name)}
                           style={{ 
                             background: 'none', border: 'none', cursor: 'pointer', 
                             color: 'var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.25rem' 
