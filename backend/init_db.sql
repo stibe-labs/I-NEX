@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS accessories (
+    id SERIAL PRIMARY KEY,
+    item_code VARCHAR(100),
+    particular TEXT NOT NULL,
+    cash NUMERIC(10, 2) DEFAULT 0,
+    bank NUMERIC(10, 2) DEFAULT 0,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('PAYMENT IN', 'PAYMENT OUT')),
+    particular TEXT NOT NULL,
+    cash NUMERIC(10, 2) DEFAULT 0,
+    bank NUMERIC(10, 2) DEFAULT 0,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

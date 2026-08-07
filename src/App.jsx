@@ -1,13 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign } from 'lucide-react';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BranchDashboard from './pages/BranchDashboard';
 import CustomerDetails from './pages/CustomerDetails';
 import DayBook from './pages/DayBook';
 import TeamManagement from './pages/TeamManagement';
+import Accessories from './pages/Accessories';
+import ExpenseIncome from './pages/ExpenseIncome';
 import './index.css';
 
 // Simple mockup of auth state for UI flow
@@ -81,6 +83,12 @@ const Layout = ({ children }) => {
           <Link to="/daybook" onClick={closeMenu} className={`nav-link ${isActive('/daybook')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <BookOpen size={18} /> Day Book
           </Link>
+          <Link to="/accessories" onClick={closeMenu} className={`nav-link ${isActive('/accessories')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Package size={18} /> Accessories
+          </Link>
+          <Link to="/expenses" onClick={closeMenu} className={`nav-link ${isActive('/expenses')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <DollarSign size={18} /> Expenses
+          </Link>
           {user?.role === 'admin' && (
             <Link to="/team" onClick={closeMenu} className={`nav-link ${isActive('/team')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Settings size={18} /> Team
@@ -125,10 +133,12 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Layout><DashboardRouter /></Layout></ProtectedRoute>} />
-          <Route path="/customers" element={<ProtectedRoute><Layout><CustomerDetails /></Layout></ProtectedRoute>} />
           <Route path="/daybook" element={<ProtectedRoute><Layout><DayBook /></Layout></ProtectedRoute>} />
           <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><Layout><TeamManagement /></Layout></ProtectedRoute>} />
+          <Route path="/customers" element={<ProtectedRoute><Layout><CustomerDetails /></Layout></ProtectedRoute>} />
+          <Route path="/accessories" element={<ProtectedRoute><Layout><Accessories /></Layout></ProtectedRoute>} />
+          <Route path="/expenses" element={<ProtectedRoute><Layout><ExpenseIncome /></Layout></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute><Layout><DashboardRouter /></Layout></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

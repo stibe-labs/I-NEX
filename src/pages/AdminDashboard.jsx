@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, BookOpen, TrendingUp, AlertCircle, Package, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchProjects } from '../api/frappeClient';
 
@@ -110,6 +110,12 @@ const AdminDashboard = () => {
             </Link>
             <Link to="/daybook" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
               <BookOpen size={18} /> View Day Book (Live)
+            </Link>
+            <Link to="/accessories" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--success-color)' }}>
+              <Package size={18} /> View Accessories (PG)
+            </Link>
+            <Link to="/expenses" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--success-color)' }}>
+              <DollarSign size={18} /> View Expenses & Income (PG)
             </Link>
           </div>
         </div>

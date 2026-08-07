@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, PlusCircle, Clock, Users, BookOpen, ChevronRight } from 'lucide-react';
+import { Search, PlusCircle, Clock, Users, BookOpen, ChevronRight, Package, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { fetchProjects } from '../api/frappeClient';
@@ -106,6 +106,28 @@ const BranchDashboard = () => {
               <div className="quick-link-text">
                 <h4>Update Day Book</h4>
                 <p>Manage daily income and expenses</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
+            </Link>
+
+            <Link to="/accessories" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--primary-color)' }}>
+                <Package size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Accessories</h4>
+                <p>Track accessory stock and sales</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
+            </Link>
+
+            <Link to="/expenses" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--primary-color)' }}>
+                <DollarSign size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Expense & Income</h4>
+                <p>Manage payments in and out</p>
               </div>
               <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
