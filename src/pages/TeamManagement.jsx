@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Wrench, Building, Eye, EyeOff, Users, Shield, Edit2, X } from 'lucide-react';
-import { addEmployee, addBranchUser, fetchEmployees, fetchUsers, updateBranchUser } from '../api/frappeClient';
+import { UserPlus, Wrench, Building, Eye, EyeOff, Users, Shield, Edit2, X, Trash2 } from 'lucide-react';
+import { addEmployee, addBranchUser, fetchEmployees, fetchUsers, updateBranchUser, deleteEmployee } from '../api/frappeClient';
 
 const TeamManagement = () => {
   // Staff State
@@ -115,6 +115,17 @@ const TeamManagement = () => {
       loadData();
     } catch (err) {
       alert('Failed to update branch user. Keep in mind Frappe restricts changing the primary email ID directly via API for security reasons. Check console for details.');
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId) => {
+    if (!window.confirm(`Are you sure you want to delete this employee?`)) return;
+    try {
+      await deleteEmployee(employeeId);
+      loadData();
+      alert('Employee deleted successfully');
+    } catch(err) {
+      alert('Failed to delete employee. Check console for details.');
     }
   };
 
@@ -289,6 +300,7 @@ const TeamManagement = () => {
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,10 +319,21 @@ const TeamManagement = () => {
                           {emp.status}
                         </span>
                       </td>
+                      <td>
+                        <button 
+                          onClick={() => handleDeleteEmployee(emp.name)}
+                          style={{ 
+                            background: 'none', border: 'none', cursor: 'pointer', 
+                            color: 'var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.25rem' 
+                          }}
+                        >
+                          <Trash2 size={16} /> Delete
+                        </button>
+                      </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="3" style={{ textAlign: 'center', padding: '1rem' }}>No staff found.</td>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: '1rem' }}>No staff found.</td>
                     </tr>
                   )}
                 </tbody>
