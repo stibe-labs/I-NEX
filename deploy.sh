@@ -7,7 +7,7 @@ set -e
 SERVER="stibe"
 REMOTE_REPO="/var/www/inex-repo"
 REMOTE_APP="$REMOTE_REPO/I-NEX"
-PORT=3031
+PORT=3050
 PM2_APP_NAME="i-nex-website"
 
 echo "📥 Pulling latest code from GitHub..."
