@@ -1,9 +1,6 @@
 // Base URL for the PostgreSQL Backend Server
-// For local development, this points to localhost:3060
-// In production, we'll configure Nginx to proxy /pg-api to the backend, or use a direct URL
-const PG_API_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://inex.hnatax.in/pg-api'
-  : 'http://localhost:3060/api';
+// We always point to the remote live server because the Node backend is hosted there
+const PG_API_URL = 'https://inex.hnatax.in/pg-api';
 
 const getHeaders = () => {
   return {

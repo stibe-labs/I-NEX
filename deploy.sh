@@ -26,4 +26,4 @@ ssh "$SERVER" "cd $REMOTE_APP && (pm2 restart $PM2_APP_NAME --update-env || pm2 
 echo "🔄 Restarting or Starting PM2 backend app..."
 ssh "$SERVER" "cd $REMOTE_APP/backend && npm install && (pm2 restart i-nex-backend --update-env || pm2 start server.js --name \"i-nex-backend\")"
 
-echo "✅ Deployed! The app is running on Port $PORT and backend on 3060."
+echo "✅ Deployed! The app is running on Port $PORT and backend on 3099."
