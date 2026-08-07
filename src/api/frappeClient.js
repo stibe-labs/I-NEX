@@ -92,7 +92,11 @@ export const addEmployee = async (employeeName, phoneNo) => {
       }),
     });
     
-    if (!res.ok) throw new Error('Failed to create employee');
+    if (!res.ok) {
+      const errData = await res.text();
+      console.error("Frappe Error Response:", errData);
+      throw new Error(`Failed to create employee: ${errData}`);
+    }
     const data = await res.json();
     return data.data;
   } catch (error) {
