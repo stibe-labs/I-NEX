@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject } from '../api/frappeClient';
+import { fetchProjects, createProject, fetchEmployees } from '../api/frappeClient';
 import { Plus, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 const CustomerDetails = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -24,8 +25,12 @@ const CustomerDetails = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await fetchProjects();
+      const [data, empData] = await Promise.all([
+        fetchProjects(),
+        fetchEmployees()
+      ]);
       setProjects(data);
+      setEmployees(empData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -183,9 +188,20 @@ const CustomerDetails = () => {
             </div>
             <div className="input-group">
               <label>Technician</label>
-              <input type="text" className="input-field" value={formData.technician} onChange={e => handleInputChange('technician', e.target.value)} />
+              <input type="text" className="input-field" list="employee-list" value={formData.technician} onChange={e => handleInputChange('technician', e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label>Receiver</label>
+              <input type="text" className="input-field" list="employee-list" value={formData.receiver} onChange={e => handleInputChange('receiver', e.target.value)} />
             </div>
           </div>
+
+          <datalist id="employee-list">
+            {employees.map((emp, i) => (
+              <option key={i} value={emp.employee_name} />
+            ))}
+          </datalist>
+
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
               <Save size={18} /> {isSaving ? 'Saving...' : 'Save to Frappe'}
