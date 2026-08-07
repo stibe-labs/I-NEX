@@ -76,6 +76,29 @@ export const createProject = async (projectData) => {
   }
 };
 
+export const updateProject = async (projectId, projectData) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Project/${encodeURIComponent(projectId)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(projectData),
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      console.error("Failed to update project", err);
+      throw new Error(err.message || 'Failed to update project');
+    }
+    
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error updating Project", error);
+    throw error;
+  }
+};
+
 export const addEmployee = async (employeeName, phoneNo) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Employee`, {

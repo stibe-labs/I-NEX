@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject } from '../api/frappeClient';
-import { Plus, Save, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { fetchProjects, createProject, updateProject } from '../api/frappeClient';
+import { Plus, Save, X, MoreVertical, Edit, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -10,6 +12,20 @@ const DayBook = () => {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editProjectId, setEditProjectId] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Local form state
   const [formData, setFormData] = useState({
@@ -56,21 +72,130 @@ const DayBook = () => {
         notes: `Consumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}`
       };
       
-      await createProject(projectData);
-      toast.success("DayBook Entry Created!");
+      if (editProjectId) {
+        await updateProject(editProjectId, projectData);
+        toast.success("DayBook Entry Updated!");
+      } else {
+        await createProject(projectData);
+        toast.success("DayBook Entry Created!");
+      }
       
       await loadData();
       setIsAdding(false);
+      setEditProjectId(null);
       setFormData({
         sl_no: '', customer_name: '', job_card: '', model_name: '',
         consumption: '', warranty: '', cash: '', bank: '', credit: '',
         cost: '', profit: ''
       });
     } catch (e) {
-      toast.error("Failed to save to Frappe.");
+      toast.error(editProjectId ? "Failed to update in Frappe." : "Failed to save to Frappe.");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleEdit = (project) => {
+    const nameParts = (project.project_name || '').trim().split(/\s+/);
+    const code = nameParts[0] || '';
+    const name = nameParts.slice(1).join(' ') || '';
+
+    setFormData({
+      sl_no: project.name || '',
+      customer_name: name,
+      job_card: code,
+      model_name: project.custom_model_name || '',
+      consumption: extractNote(project.notes, 'Consumption'),
+      warranty: extractNote(project.notes, 'Warranty'),
+      cash: extractNote(project.notes, 'Cash'),
+      bank: extractNote(project.notes, 'Bank'),
+      credit: extractNote(project.notes, 'Credit'),
+      cost: project.total_costing_amount || '',
+      profit: project.total_billed_amount || ''
+    });
+    setEditProjectId(project.name);
+    setIsAdding(true);
+    setOpenMenuId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const generatePDF = (project) => {
+    const nameParts = (project.project_name || '').trim().split(/\s+/);
+    const jobCard = nameParts[0] || '';
+    const customerName = nameParts.slice(1).join(' ') || '';
+    const doc = new jsPDF();
+    
+    // Header setup
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("INEX ACCESSORIES", 14, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Mobile Phone Service & Accessories", 14, 32);
+    
+    // Add Logo (if present in public folder, needs base64, but we can load image via URL or skip if CORS, using a simpler approach by drawing a box if logo fails)
+    const img = new Image();
+    img.src = '/INEX final logo-04.png';
+    img.onload = () => {
+      // Draw Logo
+      doc.addImage(img, 'PNG', 150, 10, 40, 20);
+      finishPDF();
+    };
+    img.onerror = () => {
+      // Proceed without logo
+      finishPDF();
+    }
+
+    const finishPDF = () => {
+      doc.setLineWidth(0.5);
+      doc.line(14, 38, 196, 38);
+
+      // Customer Details
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("RECEIPT / BILL", 14, 48);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 48);
+      
+      doc.text(`Job Card No: ${jobCard}`, 14, 58);
+      doc.text(`Customer Name: ${customerName}`, 14, 65);
+      
+      // Table Data
+      const tableData = [
+        ["Model Name", project.custom_model_name || '-'],
+        ["Consumption", extractNote(project.notes, 'Consumption') || '-'],
+        ["Warranty", extractNote(project.notes, 'Warranty') || '-'],
+        ["Cash Paid", extractNote(project.notes, 'Cash') || '-'],
+        ["Bank Paid", extractNote(project.notes, 'Bank') || '-'],
+        ["Credit", extractNote(project.notes, 'Credit') || '-']
+      ];
+
+      doc.autoTable({
+        startY: 75,
+        head: [['Description', 'Details']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185] }
+      });
+
+      const finalY = doc.lastAutoTable.finalY || 75;
+      
+      // Total Amount
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Amount: Rs. ${project.total_billed_amount || '0'}`, 140, finalY + 15);
+
+      // Footer
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text("Thank you for your business!", 105, 280, { align: 'center' });
+      
+      doc.save(`INEX_Bill_${jobCard}.pdf`);
+      setOpenMenuId(null);
+    };
   };
 
   const extractNote = (notes, key) => {
@@ -134,7 +259,7 @@ const DayBook = () => {
 
       {isAdding && (
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>New Day Book Entry</h3>
+          <h3 style={{ marginBottom: '1.5rem' }}>{editProjectId ? 'Edit Day Book Entry' : 'New Day Book Entry'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div className="input-group">
               <label>Job Card</label>
@@ -175,9 +300,9 @@ const DayBook = () => {
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-              <Save size={18} /> {isSaving ? 'Saving...' : 'Save to Frappe'}
+              <Save size={18} /> {isSaving ? 'Saving...' : (editProjectId ? 'Update Entry' : 'Save to Frappe')}
             </button>
-            <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); handleClear(); }}>
+            <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); setEditProjectId(null); handleClear(); }}>
               <X size={18} /> Cancel
             </button>
             <button className="btn" style={{ background: 'rgba(255, 107, 107, 0.1)', color: '#ff6b6b' }} onClick={handleClear}>
@@ -215,6 +340,7 @@ const DayBook = () => {
                 <th>CREDIT</th>
                 <th>COST</th>
                 <th>PROFIT</th>
+                <th style={{ width: '50px', textAlign: 'center' }}>ACT.</th>
               </tr>
             </thead>
             <tbody>
@@ -238,6 +364,45 @@ const DayBook = () => {
                     <td>{extractNote(p.notes, 'Credit') || '-'}</td>
                     <td>{p.total_costing_amount || '-'}</td>
                     <td style={{ color: 'var(--primary-color)', fontWeight: 600 }}>{p.total_billed_amount || '-'}</td>
+                    <td style={{ position: 'relative' }}>
+                      <button 
+                        className="btn-icon" 
+                        onClick={() => setOpenMenuId(openMenuId === p.name ? null : p.name)}
+                        style={{ padding: '0.25rem', background: 'transparent' }}
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      {openMenuId === p.name && (
+                        <div 
+                          ref={menuRef}
+                          className="dropdown-menu" 
+                          style={{
+                            position: 'absolute',
+                            right: '30px',
+                            top: '10px',
+                            background: 'white',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            minWidth: '140px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <button 
+                            onClick={() => handleEdit(p)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid #f1f3f5', fontSize: '0.85rem' }}
+                          >
+                            <Edit size={14} /> Edit
+                          </button>
+                          <button 
+                            onClick={() => generatePDF(p)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                          >
+                            <Download size={14} /> Download PDF
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
