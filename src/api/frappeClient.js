@@ -106,6 +106,25 @@ export const addEmployee = async (employeeName, phoneNo) => {
   }
 };
 
+export const deleteEmployee = async (employeeId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Employee/${employeeId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) {
+      const errData = await res.text();
+      console.error("Frappe Delete Error:", errData);
+      throw new Error(`Failed to delete employee: ${errData}`);
+    }
+    return true;
+  } catch (error) {
+    console.error("Error deleting Employee", error);
+    throw error;
+  }
+};
+
 export const addBranchUser = async (branchName, username, password) => {
   try {
     // 1. Create User
