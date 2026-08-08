@@ -14,6 +14,7 @@ const Accessories = () => {
   const [formData, setFormData] = useState({
     item_code: '', particular: '', cash: '', bank: ''
   });
+  const [filterBranch, setFilterBranch] = useState('All');
 
   const loadData = async () => {
     setLoading(true);
@@ -112,6 +113,21 @@ const Accessories = () => {
       )}
 
       <div className="table-container">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          {user?.role === 'admin' && (
+            <select 
+              className="input-field" 
+              style={{ width: 'auto', minWidth: '150px' }}
+              value={filterBranch}
+              onChange={e => setFilterBranch(e.target.value)}
+            >
+              <option value="All">All Branches</option>
+              {Array.from(new Set(items.map(item => item.created_by))).filter(Boolean).map((branch, i) => (
+                <option key={i} value={branch}>{branch}</option>
+              ))}
+            </select>
+          )}
+        </div>
         {loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>Loading live data from PostgreSQL...</div>
         ) : (
@@ -127,7 +143,9 @@ const Accessories = () => {
               </tr>
             </thead>
             <tbody>
-              {items.map((item, i) => {
+              {items
+                .filter(item => user?.role === 'admin' ? (filterBranch === 'All' || item.created_by === filterBranch) : item.created_by === user?.name)
+                .map((item, i) => {
                 const dateObj = new Date(item.created_at);
                 const dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
 
@@ -142,7 +160,7 @@ const Accessories = () => {
                   </tr>
                 );
               })}
-              {items.length === 0 && (
+              {items.filter(item => user?.role === 'admin' ? (filterBranch === 'All' || item.created_by === filterBranch) : item.created_by === user?.name).length === 0 && (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No records found.</td>
                 </tr>
