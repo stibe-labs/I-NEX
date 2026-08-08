@@ -1,38 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Search, PlusCircle, Clock, Users, BookOpen, ChevronRight, Package, DollarSign } from 'lucide-react';
+import React from 'react';
+import { Search, PlusCircle, Users, BookOpen, ChevronRight, Package, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { fetchProjects } from '../api/frappeClient';
 
 const BranchDashboard = () => {
   const { user } = useAuth();
-  const [pendingEntries, setPendingEntries] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchProjects();
-        // Filter strictly for this branch
-        const branchData = data.filter(p => p.company === user?.name);
-        // Sort by creation date descending and take top 5
-        const sortedData = branchData.sort((a, b) => new Date(b.creation) - new Date(a.creation)).slice(0, 5);
-        setPendingEntries(sortedData);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [user]);
-
-  // Helper to extract Complaint from notes
-  const extractComplaint = (notes) => {
-    if(!notes) return 'No complaint specified';
-    const match = notes.match(/Complaint:\s*(.*)/);
-    return match ? match[1] : 'No complaint specified';
-  };
   
   return (
     <div>
@@ -55,34 +27,6 @@ const BranchDashboard = () => {
       </div>
 
       <div className="dashboard-grid">
-        <div className="glass-card">
-          <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock size={20} color="var(--warning-color)" /> Pending Today
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {loading ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading pending entries...</p>
-            ) : pendingEntries.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No entries yet. Click "New Entry" to add one!</p>
-            ) : (
-              pendingEntries.map((p, i) => {
-                const nameParts = (p.project_name || '').trim().split(/\s+/);
-                const code = nameParts[0] || `#${i+1}`;
-                const name = nameParts.slice(1).join(' ') || 'Unknown';
-                return (
-                  <div key={p.name || i} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid var(--warning-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600 }}>{code} - {name}</span>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{p.custom_model_name || '-'}</span>
-                    </div>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Complaint: {extractComplaint(p.notes)}</p>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-
         <div className="glass-card">
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <PlusCircle size={20} color="var(--primary-color)" /> Quick Links
