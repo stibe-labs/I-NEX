@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, TrendingUp, AlertCircle, Package, DollarSign, X } from 'lucide-react';
+import { Users, BookOpen, TrendingUp, AlertCircle, Package, DollarSign, X, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchProjects } from '../api/frappeClient';
 
@@ -129,18 +129,49 @@ const AdminDashboard = () => {
       <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
         <div className="glass-card">
           <h3 style={{ marginBottom: '1.5rem' }}>Data Management</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <Link to="/customers" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <Users size={18} /> View Customer Details (Live)
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+            <Link to="/customers" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--primary-color)' }}>
+                <Users size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Customer Details</h4>
+                <p>View and manage all customer job cards</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
-            <Link to="/daybook" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <BookOpen size={18} /> View Day Book (Live)
+            
+            <Link to="/daybook" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--primary-color)' }}>
+                <BookOpen size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Day Book Entries</h4>
+                <p>View all daily entries across branches</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
-            <Link to="/accessories" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--success-color)' }}>
-              <Package size={18} /> View Accessories (PG)
+            
+            <Link to="/accessories" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
+                <Package size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Accessories (PG)</h4>
+                <p>Manage accessory inventory and sales</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
-            <Link to="/expenses" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--success-color)' }}>
-              <DollarSign size={18} /> View Expenses & Income (PG)
+            
+            <Link to="/expenses" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
+                <DollarSign size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>Expenses & Income (PG)</h4>
+                <p>Track payments and expenditures</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>
           </div>
         </div>
