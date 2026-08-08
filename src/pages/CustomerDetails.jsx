@@ -35,6 +35,7 @@ const CustomerDetails = () => {
 
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterBranch, setFilterBranch] = useState('All');
 
   const loadData = async () => {
     setLoading(true);
@@ -119,6 +120,9 @@ const CustomerDetails = () => {
   const filteredProjects = projects.filter(p => {
     // Branch Filter: Branches only see their own records. Admins see all.
     if (user?.role === 'branch' && p.company !== user?.name) return false;
+    
+    // Admin branch filter dropdown
+    if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
 
     const term = searchTerm.toLowerCase();
     const nameStr = (p.project_name || '').toLowerCase();
@@ -244,7 +248,20 @@ const CustomerDetails = () => {
       )}
 
       <div className="table-container">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          {user?.role === 'admin' && (
+            <select 
+              className="input-field" 
+              style={{ width: 'auto', minWidth: '150px' }}
+              value={filterBranch}
+              onChange={e => setFilterBranch(e.target.value)}
+            >
+              <option value="All">All Branches</option>
+              {Array.from(new Set(projects.map(p => p.company))).filter(Boolean).map((branch, i) => (
+                <option key={i} value={branch}>{branch}</option>
+              ))}
+            </select>
+          )}
           <input 
             type="text" 
             className="input-field" 
