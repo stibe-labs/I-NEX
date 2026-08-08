@@ -60,7 +60,7 @@ const AdminDashboard = () => {
       <h1 style={{ marginBottom: '2rem' }}>Admin Overview</h1>
       
       <div className="dashboard-grid">
-        <Link to="/customers" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <Link to="/customers" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="stat-card-icon" style={{ background: 'rgba(0, 0, 0, 0.05)', color: 'var(--primary-color)' }}>
             <Users size={32} />
           </div>
@@ -70,7 +70,7 @@ const AdminDashboard = () => {
           </div>
         </Link>
         
-        <Link to="/daybook" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <Link to="/daybook" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="stat-card-icon" style={{ background: 'rgba(0, 0, 0, 0.05)', color: 'var(--primary-color)' }}>
             <BookOpen size={32} />
           </div>
@@ -80,7 +80,7 @@ const AdminDashboard = () => {
           </div>
         </Link>
         
-        <Link to="/expenses" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <Link to="/expenses" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="stat-card-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning-color)' }}>
             <TrendingUp size={32} />
           </div>
@@ -90,7 +90,7 @@ const AdminDashboard = () => {
           </div>
         </Link>
         
-        <Link to="/customers" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <Link to="/customers" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="stat-card-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)' }}>
             <AlertCircle size={32} />
           </div>
