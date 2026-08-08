@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject, fetchEmployees } from '../api/frappeClient';
-import { Plus, Save, X } from 'lucide-react';
+import { fetchProjects, createProject, fetchEmployees, deleteProject } from '../api/frappeClient';
+import { Plus, Save, X, MoreVertical, Trash2 } from 'lucide-react';
+import { useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -11,6 +12,19 @@ const CustomerDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   
   // Local form state
   const [formData, setFormData] = useState({
@@ -78,6 +92,19 @@ const CustomerDetails = () => {
       toast.error("Failed to save to Frappe. See console.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (projectId) => {
+    if (window.confirm("Are you sure you want to delete this customer detail entry?")) {
+      try {
+        await deleteProject(projectId);
+        toast.success("Entry deleted successfully!");
+        setOpenMenuId(null);
+        await loadData();
+      } catch (error) {
+        toast.error("Failed to delete entry from Frappe.");
+      }
     }
   };
 
@@ -246,6 +273,7 @@ const CustomerDetails = () => {
                 <th>TECHNICIAN</th>
                 <th>UPDATE</th>
                 <th>DELIVERY</th>
+                <th style={{ width: '50px', textAlign: 'center' }}>ACT.</th>
               </tr>
             </thead>
             <tbody>
@@ -275,12 +303,45 @@ const CustomerDetails = () => {
                     <td>{extractNote(p.notes, 'Technician') || '-'}</td>
                     <td>{extractNote(p.notes, 'Update') || '-'}</td>
                     <td>{extractNote(p.notes, 'Delivery') || '-'}</td>
+                    <td style={{ position: 'relative' }}>
+                      <button 
+                        className="btn-icon" 
+                        onClick={() => setOpenMenuId(openMenuId === p.name ? null : p.name)}
+                        style={{ padding: '0.25rem', background: 'transparent' }}
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      {openMenuId === p.name && (
+                        <div 
+                          ref={menuRef}
+                          className="dropdown-menu" 
+                          style={{
+                            position: 'absolute',
+                            right: '30px',
+                            top: '10px',
+                            background: 'white',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            minWidth: '120px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <button 
+                            onClick={() => handleDelete(p.name)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {filteredProjects.length === 0 && (
                 <tr>
-                  <td colSpan="13" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
+                  <td colSpan="14" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
                 </tr>
               )}
             </tbody>
