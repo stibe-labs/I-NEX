@@ -40,9 +40,11 @@ const AdminDashboard = () => {
         };
 
         projects.forEach(p => {
-          // Calculate Day Book Entries (only count if it has sale/payment data)
-          const hasDayBookData = p.total_billed_amount > 0 || p.total_costing_amount > 0 || 
-                                 extractNote(p.notes, 'Cash') !== '' || extractNote(p.notes, 'Bank') !== '' || extractNote(p.notes, 'Credit') !== '';
+          // Calculate Day Book Entries (only count if it has sale/payment data, not just an estimate amount)
+          const hasDayBookData = extractNote(p.notes, 'Cash') !== '' || 
+                                 extractNote(p.notes, 'Bank') !== '' || 
+                                 extractNote(p.notes, 'Credit') !== '' || 
+                                 extractNote(p.notes, 'Consumption') !== '';
           if (hasDayBookData) {
             dayBookEntries++;
           }

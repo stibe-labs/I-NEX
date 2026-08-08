@@ -63,14 +63,26 @@ const DayBook = () => {
     
     setIsSaving(true);
     try {
+      const existingProject = editProjectId ? projects.find(p => p.name === editProjectId) : null;
+      const existingNotes = existingProject?.notes || '';
+      
+      const complaint = extractNote(existingNotes, 'Complaint');
+      const passcode = extractNote(existingNotes, 'Passcode');
+      const receiver = extractNote(existingNotes, 'Receiver');
+      const technician = extractNote(existingNotes, 'Technician');
+      const update = extractNote(existingNotes, 'Update');
+      const delivery = extractNote(existingNotes, 'Delivery');
+      
+      const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nUpdate: ${update}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}`;
+
       const projectData = {
         project_name: `${formData.job_card} ${formData.customer_name}`,
         company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
-        status: 'Open',
+        status: 'Completed', // Once a Day Book sale is added, status is Completed
         custom_model_name: formData.model_name,
         total_billed_amount: parseFloat(formData.profit) || 0,
         total_costing_amount: parseFloat(formData.cost) || 0,
-        notes: `Consumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}`
+        notes: newNotes
       };
       
       if (editProjectId) {
@@ -212,9 +224,11 @@ const DayBook = () => {
 
   // Filter projects based on search term and user role and Day Book constraints
   const filteredProjects = projects.filter(p => {
-    // Only include if it has sale/payment data (Day Book Entry logic)
-    const hasDayBookData = p.total_billed_amount > 0 || p.total_costing_amount > 0 || 
-                           extractNote(p.notes, 'Cash') !== '' || extractNote(p.notes, 'Bank') !== '' || extractNote(p.notes, 'Credit') !== '';
+    // Only include if it has actual Day Book sale data (not just an amount estimate from Customer Details)
+    const hasDayBookData = extractNote(p.notes, 'Cash') !== '' || 
+                           extractNote(p.notes, 'Bank') !== '' || 
+                           extractNote(p.notes, 'Credit') !== '' || 
+                           extractNote(p.notes, 'Consumption') !== '';
     if (!hasDayBookData) return false;
 
     // Branch Filter: Branches only see their own records. Admins see all.
