@@ -99,6 +99,25 @@ export const updateProject = async (projectId, projectData) => {
   }
 };
 
+export const deleteProject = async (projectId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Project/${encodeURIComponent(projectId)}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) {
+      const errData = await res.text();
+      console.error("Frappe Delete Error:", errData);
+      throw new Error(`Failed to delete project: ${errData}`);
+    }
+    return true;
+  } catch (error) {
+    console.error("Error deleting Project", error);
+    throw error;
+  }
+};
+
 export const addEmployee = async (employeeName, phoneNo) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Employee`, {

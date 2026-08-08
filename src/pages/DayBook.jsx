@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Edit, Download } from 'lucide-react';
+import { fetchProjects, createProject, updateProject, deleteProject } from '../api/frappeClient';
+import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import toast from 'react-hot-toast';
@@ -117,6 +117,19 @@ const DayBook = () => {
     setIsAdding(true);
     setOpenMenuId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (projectId) => {
+    if (window.confirm("Are you sure you want to delete this entry?")) {
+      try {
+        await deleteProject(projectId);
+        toast.success("Entry deleted successfully!");
+        setOpenMenuId(null);
+        await loadData();
+      } catch (error) {
+        toast.error("Failed to delete entry from Frappe.");
+      }
+    }
   };
 
   const generatePDF = (project) => {
@@ -396,9 +409,15 @@ const DayBook = () => {
                           </button>
                           <button 
                             onClick={() => generatePDF(p)}
-                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid #f1f3f5', fontSize: '0.85rem' }}
                           >
                             <Download size={14} /> Download PDF
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(p.name)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
+                          >
+                            <Trash2 size={14} /> Delete
                           </button>
                         </div>
                       )}
