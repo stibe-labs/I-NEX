@@ -355,21 +355,21 @@ h1 {
   }
 
   .dashboard-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
   }
 
   .stat-card {
-    flex-direction: row;
-    justify-content: flex-start;
-    text-align: left;
-    gap: 1rem;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
     padding: 1rem;
-    aspect-ratio: auto;
+    aspect-ratio: 1 / 1;
   }
 
   .stat-card-icon {
-    padding: 0.75rem;
+    padding: 0.5rem;
   }
   
   .stat-card-icon svg {
@@ -378,12 +378,12 @@ h1 {
   }
 
   .stat-card-value {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     margin-top: 0;
   }
 
   .stat-card-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     line-height: 1.2;
   }
 
