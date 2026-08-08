@@ -23,7 +23,7 @@ const AdminDashboard = () => {
         const projects = await fetchProjects();
         
         let totalProjects = projects.length;
-        let dayBookEntries = projects.length; // Same dataset currently
+        let dayBookEntries = 0; 
         let monthlyRevenue = 0;
         let pendingRepairs = 0;
 
@@ -33,7 +33,20 @@ const AdminDashboard = () => {
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
 
+        const extractNote = (notes, key) => {
+          if(!notes) return '';
+          const match = notes.match(new RegExp(`${key}:\\s*(.*)`));
+          return match ? match[1] : '';
+        };
+
         projects.forEach(p => {
+          // Calculate Day Book Entries (only count if it has sale/payment data)
+          const hasDayBookData = p.total_billed_amount > 0 || p.total_costing_amount > 0 || 
+                                 extractNote(p.notes, 'Cash') !== '' || extractNote(p.notes, 'Bank') !== '' || extractNote(p.notes, 'Credit') !== '';
+          if (hasDayBookData) {
+            dayBookEntries++;
+          }
+
           // Calculate pending repairs (only count strictly 'Open' projects)
           if (p.status === 'Open') {
             pendingRepairs++;

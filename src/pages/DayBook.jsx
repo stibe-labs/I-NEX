@@ -210,8 +210,13 @@ const DayBook = () => {
     return match ? match[1] : '';
   };
 
-  // Filter projects based on search term and user role
+  // Filter projects based on search term and user role and Day Book constraints
   const filteredProjects = projects.filter(p => {
+    // Only include if it has sale/payment data (Day Book Entry logic)
+    const hasDayBookData = p.total_billed_amount > 0 || p.total_costing_amount > 0 || 
+                           extractNote(p.notes, 'Cash') !== '' || extractNote(p.notes, 'Bank') !== '' || extractNote(p.notes, 'Credit') !== '';
+    if (!hasDayBookData) return false;
+
     // Branch Filter: Branches only see their own records. Admins see all.
     if (user?.role === 'branch' && p.company !== user?.name) return false;
     
@@ -233,26 +238,32 @@ const DayBook = () => {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value };
-      
-      // Auto-fill logic when typing Code
-      if (field === 'job_card' && value.trim().length >= 4) {
-        const match = projects.find(p => {
-          const code = (p.project_name || '').trim().split(/\s+/)[0];
-          return code.toLowerCase() === value.trim().toLowerCase();
-        });
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Auto-fill logic when typing Code
+    if (field === 'job_card' && value.trim().length >= 4) {
+      const match = projects.find(p => {
+        const code = (p.project_name || '').trim().split(/\s+/)[0];
+        return code.toLowerCase() === value.trim().toLowerCase();
+      });
 
-        if (match) {
-          const nameParts = (match.project_name || '').trim().split(/\s+/);
-          const name = nameParts.slice(1).join(' ') || '';
-          
+      if (match) {
+        const nameParts = (match.project_name || '').trim().split(/\s+/);
+        const name = nameParts.slice(1).join(' ') || '';
+        
+        setFormData(prev => {
+          const next = { ...prev };
           if (!prev.customer_name && name) next.customer_name = name;
           if (!prev.model_name && match.custom_model_name) next.model_name = match.custom_model_name;
-        }
+          return next;
+        });
+        
+        // This makes sure we update the existing job card instead of creating a duplicate!
+        setEditProjectId(match.name);
+      } else {
+        setEditProjectId(null);
       }
-      return next;
-    });
+    }
   };
 
   return (
