@@ -34,8 +34,8 @@ const AdminDashboard = () => {
         const currentYear = new Date().getFullYear();
 
         projects.forEach(p => {
-          // Calculate pending repairs
-          if (p.status !== 'Completed') {
+          // Calculate pending repairs (only count strictly 'Open' projects)
+          if (p.status === 'Open') {
             pendingRepairs++;
             pendingList.push({
               code: (p.project_name || '').trim().split(/\s+/)[0] || '-',
