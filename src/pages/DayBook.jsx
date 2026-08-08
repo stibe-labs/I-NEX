@@ -224,8 +224,10 @@ const DayBook = () => {
 
   // Filter projects based on search term and user role and Day Book constraints
   const filteredProjects = projects.filter(p => {
-    // Only include if it has actual Day Book sale data (not just an amount estimate from Customer Details)
-    const hasDayBookData = extractNote(p.notes, 'Cash') !== '' || 
+    // Only include if it has actual Day Book sale data (Amount > 0 or Day Book notes)
+    const hasDayBookData = p.total_billed_amount > 0 || 
+                           p.total_costing_amount > 0 || 
+                           extractNote(p.notes, 'Cash') !== '' || 
                            extractNote(p.notes, 'Bank') !== '' || 
                            extractNote(p.notes, 'Credit') !== '' || 
                            extractNote(p.notes, 'Consumption') !== '';
