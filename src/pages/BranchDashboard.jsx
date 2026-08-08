@@ -17,14 +17,6 @@ const BranchDashboard = () => {
         </Link>
       </div>
 
-      <div className="glass-card" style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-            <input type="text" className="input-field" placeholder="Search by Job Card, Customer Name, or Phone..." style={{ paddingLeft: '2.5rem' }} />
-          </div>
-        </div>
-      </div>
 
       <div className="dashboard-grid">
         <div className="glass-card">
