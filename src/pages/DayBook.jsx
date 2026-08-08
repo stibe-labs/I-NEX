@@ -138,21 +138,13 @@ const DayBook = () => {
     const customerName = nameParts.slice(1).join(' ') || '';
     const doc = new jsPDF();
     
-    // Header setup
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("INEX ACCESSORIES", 14, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text("Mobile Phone Service & Accessories", 14, 32);
-    
-    // Add Logo (if present in public folder, needs base64, but we can load image via URL or skip if CORS, using a simpler approach by drawing a box if logo fails)
+    // Add Logo
     const img = new Image();
     img.src = '/INEX final logo-04.png';
     img.onload = () => {
-      // Draw Logo
-      doc.addImage(img, 'PNG', 150, 10, 40, 20);
+      // Draw Logo on the left side
+      // x=14, y=10, width=40, height=20 (Adjusted to maintain some aspect ratio/size)
+      doc.addImage(img, 'PNG', 14, 10, 50, 25);
       finishPDF();
     };
     img.onerror = () => {
