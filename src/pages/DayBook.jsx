@@ -64,7 +64,7 @@ const DayBook = () => {
     try {
       const projectData = {
         project_name: `${formData.job_card} ${formData.customer_name}`,
-        company: user?.role === 'admin' ? 'Admin' : (user?.name || 'Unknown Branch'),
+        company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
         status: 'Open',
         custom_model_name: formData.model_name,
         total_billed_amount: parseFloat(formData.profit) || 0,

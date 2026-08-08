@@ -53,7 +53,7 @@ const CustomerDetails = () => {
       // Map frontend form to Project DocType
       const projectData = {
         project_name: `${formData.code} ${formData.name}`,
-        company: user?.role === 'admin' ? 'Admin' : (user?.name || 'Unknown Branch'),
+        company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
         status: 'Open', // default status
         custom_phone: formData.phone_no,
         custom_model_name: formData.model,
