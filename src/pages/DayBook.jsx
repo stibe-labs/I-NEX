@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { fetchProjects, createProject, updateProject, deleteProject } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -186,7 +186,7 @@ const DayBook = () => {
         ["Credit", extractNote(project.notes, 'Credit') || '-']
       ];
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 75,
         head: [['Description', 'Details']],
         body: tableData,
