@@ -125,9 +125,10 @@ const CustomerDetails = () => {
 
   // Helper to parse notes for UI display if needed (simplified for now)
   const extractNote = (notes, key) => {
-    if(!notes) return '';
-    const match = notes.match(new RegExp(`${key}:\\s*(.*)`));
-    return match ? match[1] : '';
+    if (!notes) return '';
+    const plainText = notes.replace(/<[^>]*>?/gm, '\n');
+    const match = plainText.match(new RegExp(`${key}:[ \\t]*(.*)`));
+    return match ? match[1].trim() : '';
   };
 
   // Filter projects based on search term and user role
