@@ -28,7 +28,7 @@ const CustomerDetails = () => {
   
   // Local form state
   const [formData, setFormData] = useState({
-    code: '', name: '', phone_no: '', model: '', imei_no: '',
+    code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
     complaint: '', passcode: '', amount: '', receiver: '', technician: '',
     update: '', delivery: ''
   });
@@ -70,7 +70,7 @@ const CustomerDetails = () => {
         project_name: `${formData.code} ${formData.name}`,
         company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
         status: 'Open', // default status
-        custom_phone: formData.phone_no || '',
+        custom_phone: (formData.phone_no && formData.phone_no.trim() !== '+91-') ? formData.phone_no : '',
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
         total_billed_amount: parseFloat(formData.amount) || 0,
@@ -85,7 +85,7 @@ const CustomerDetails = () => {
       await loadData();
       setIsAdding(false);
       setFormData({
-        code: '', name: '', phone_no: '', model: '', imei_no: '',
+        code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
         update: '', delivery: ''
       });
@@ -165,7 +165,7 @@ const CustomerDetails = () => {
 
   const handleClear = () => {
     setFormData({
-      code: '', name: '', phone_no: '', model: '', imei_no: '',
+      code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
       complaint: '', passcode: '', amount: '', technician: ''
     });
   };
