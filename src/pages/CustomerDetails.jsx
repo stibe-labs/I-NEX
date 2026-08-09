@@ -65,29 +65,31 @@ const CustomerDetails = () => {
     
     setIsSaving(true);
     try {
-      // Map frontend form to Project DocType
+      let isValidPhone = false;
+      if (formData.phone_no && formData.phone_no.trim() !== '+91-') {
+        const phoneDigits = formData.phone_no.replace('+91-', '').replace(/\D/g, '');
+        // Check if it is exactly 10 digits and starts with 6,7,8, or 9
+        if (phoneDigits.length === 10 && /^[6-9]/.test(phoneDigits)) {
+          isValidPhone = true;
+        }
+      }
+
+      const phoneToSave = isValidPhone ? formData.phone_no : '';
+      const notesPhoneStr = (!isValidPhone && formData.phone_no && formData.phone_no.trim() !== '+91-') 
+                             ? `\nPhone: ${formData.phone_no}` : '';
+
       const projectData = {
         project_name: `${formData.code} ${formData.name}`,
         company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
         status: 'Open', // default status
-        custom_phone: (formData.phone_no && formData.phone_no.trim() !== '+91-') ? formData.phone_no : '',
+        custom_phone: phoneToSave,
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
         total_billed_amount: parseFloat(formData.amount) || 0,
         // Pack the rest into notes
-        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}`
+        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}${notesPhoneStr}`
       };
       
-      // Validate Phone Number Length
-      if (formData.phone_no && formData.phone_no.trim() !== '+91-') {
-        const phoneDigits = formData.phone_no.replace('+91-', '').replace(/\D/g, '');
-        if (phoneDigits.length !== 10) {
-          toast.error("Phone number must be exactly 10 digits.");
-          setIsSaving(false);
-          return;
-        }
-      }
-
       await createProject(projectData);
       toast.success('Customer Details Saved!');
       
@@ -100,11 +102,7 @@ const CustomerDetails = () => {
         update: '', delivery: ''
       });
     } catch (e) {
-      let errMsg = e.message || "Failed to save to Frappe. See console.";
-      if (errMsg.includes("is not valid") && errMsg.includes("Phone Number")) {
-        errMsg = "Invalid Phone Number. It must be a valid 10-digit Indian mobile number (starts with 6-9).";
-      }
-      toast.error(errMsg);
+      toast.error(e.message || "Failed to save to Frappe. See console.");
     } finally {
       setIsSaving(false);
     }
@@ -141,7 +139,7 @@ const CustomerDetails = () => {
 
     const term = searchTerm.toLowerCase();
     const nameStr = (p.project_name || '').toLowerCase();
-    const phoneStr = (p.custom_phone || '').toLowerCase();
+    const phoneStr = (p.custom_phone || extractNote(p.notes, 'Phone') || '').toLowerCase();
     const modelStr = (p.custom_model_name || '').toLowerCase();
     const imeiStr = (p.custom_imei_number || '').toLowerCase();
     return nameStr.includes(term) || phoneStr.includes(term) || modelStr.includes(term) || imeiStr.includes(term);
@@ -159,7 +157,8 @@ const CustomerDetails = () => {
             return code.toLowerCase() === value.trim().toLowerCase();
           }
           if (field === 'phone_no') {
-            return p.custom_phone === value.trim();
+            const pPhone = p.custom_phone || extractNote(p.notes, 'Phone');
+            return pPhone === value.trim();
           }
           return false;
         });
@@ -167,9 +166,10 @@ const CustomerDetails = () => {
         if (match) {
           const nameParts = (match.project_name || '').trim().split(/\s+/);
           const name = nameParts.slice(1).join(' ') || '';
+          const mPhone = match.custom_phone || extractNote(match.notes, 'Phone');
           
           if (!prev.name && name) next.name = name;
-          if (!prev.phone_no && match.custom_phone) next.phone_no = match.custom_phone;
+          if (!prev.phone_no && mPhone) next.phone_no = mPhone;
           if (!prev.model && match.custom_model_name) next.model = match.custom_model_name;
           if (!prev.imei_no && match.custom_imei_number) next.imei_no = match.custom_imei_number;
         }
@@ -325,7 +325,7 @@ const CustomerDetails = () => {
                     <td>{dateString}</td>
                     <td>{code}</td>
                     <td style={{ fontWeight: 600 }}>{name}</td>
-                    <td>{p.custom_phone || '-'}</td>
+                    <td>{p.custom_phone || extractNote(p.notes, 'Phone') || '-'}</td>
                     <td>{p.custom_model_name || '-'}</td>
                     <td>{p.custom_imei_number || '-'}</td>
                     <td>{extractNote(p.notes, 'Complaint') || '-'}</td>
