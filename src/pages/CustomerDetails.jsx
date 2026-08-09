@@ -102,7 +102,7 @@ const CustomerDetails = () => {
     } catch (e) {
       let errMsg = e.message || "Failed to save to Frappe. See console.";
       if (errMsg.includes("is not valid") && errMsg.includes("Phone Number")) {
-        errMsg = "Invalid Phone Number. Please ensure it is exactly 10 digits long.";
+        errMsg = "Invalid Phone Number. It must be a valid 10-digit Indian mobile number (starts with 6-9).";
       }
       toast.error(errMsg);
     } finally {
