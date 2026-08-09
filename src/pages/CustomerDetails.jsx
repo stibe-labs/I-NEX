@@ -85,9 +85,8 @@ const CustomerDetails = () => {
         custom_phone: phoneToSave,
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
-        total_billed_amount: parseFloat(formData.amount) || 0,
         // Pack the rest into notes
-        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}${notesPhoneStr}`
+        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
       };
       
       await createProject(projectData);
@@ -330,7 +329,7 @@ const CustomerDetails = () => {
                     <td>{p.custom_imei_number || '-'}</td>
                     <td>{extractNote(p.notes, 'Complaint') || '-'}</td>
                     <td>{extractNote(p.notes, 'Passcode') || '-'}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{p.total_billed_amount || '-'}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{extractNote(p.notes, 'Amount') || p.total_billed_amount || '-'}</td>
                     <td>{extractNote(p.notes, 'Receiver') || '-'}</td>
                     <td>{extractNote(p.notes, 'Technician') || '-'}</td>
                     <td>{extractNote(p.notes, 'Update') || '-'}</td>

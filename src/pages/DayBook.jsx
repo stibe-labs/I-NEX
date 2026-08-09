@@ -73,15 +73,13 @@ const DayBook = () => {
       const update = extractNote(existingNotes, 'Update');
       const delivery = extractNote(existingNotes, 'Delivery');
       
-      const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nUpdate: ${update}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}`;
+      const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nUpdate: ${update}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}\nCost: ${formData.cost}\nProfit: ${formData.profit}`;
 
       const projectData = {
         project_name: `${formData.job_card} ${formData.customer_name}`,
         company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
         status: 'Completed', // Once a Day Book sale is added, status is Completed
         custom_model_name: formData.model_name,
-        total_billed_amount: parseFloat(formData.profit) || 0,
-        total_costing_amount: parseFloat(formData.cost) || 0,
         notes: newNotes
       };
       
@@ -123,8 +121,8 @@ const DayBook = () => {
       cash: extractNote(project.notes, 'Cash'),
       bank: extractNote(project.notes, 'Bank'),
       credit: extractNote(project.notes, 'Credit'),
-      cost: project.total_costing_amount || '',
-      profit: project.total_billed_amount || ''
+      cost: extractNote(project.notes, 'Cost') || project.total_costing_amount || '',
+      profit: extractNote(project.notes, 'Profit') || project.total_billed_amount || ''
     });
     setEditProjectId(project.name);
     setIsAdding(true);
@@ -204,7 +202,8 @@ const DayBook = () => {
       // Total Amount
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text(`Total Amount: Rs. ${project.total_billed_amount || '0'}`, 140, finalY + 15);
+      const profit = extractNote(project.notes, 'Profit') || project.total_billed_amount || '0';
+      doc.text(`Total Amount: Rs. ${profit}`, 140, finalY + 15);
 
       // Footer
       doc.setFontSize(9);
@@ -231,7 +230,9 @@ const DayBook = () => {
                            extractNote(p.notes, 'Cash') !== '' || 
                            extractNote(p.notes, 'Bank') !== '' || 
                            extractNote(p.notes, 'Credit') !== '' || 
-                           extractNote(p.notes, 'Consumption') !== '';
+                           extractNote(p.notes, 'Consumption') !== '' ||
+                           extractNote(p.notes, 'Profit') !== '' ||
+                           extractNote(p.notes, 'Cost') !== '';
     if (!hasDayBookData) return false;
 
     // Branch Filter: Branches only see their own records. Admins see all.
@@ -412,8 +413,8 @@ const DayBook = () => {
                     <td>{extractNote(p.notes, 'Cash') || '-'}</td>
                     <td>{extractNote(p.notes, 'Bank') || '-'}</td>
                     <td>{extractNote(p.notes, 'Credit') || '-'}</td>
-                    <td>{p.total_costing_amount || '-'}</td>
-                    <td style={{ color: 'var(--primary-color)', fontWeight: 600 }}>{p.total_billed_amount || '-'}</td>
+                    <td>{extractNote(p.notes, 'Cost') || p.total_costing_amount || '-'}</td>
+                    <td style={{ color: 'var(--primary-color)', fontWeight: 600 }}>{extractNote(p.notes, 'Profit') || p.total_billed_amount || '-'}</td>
                     <td style={{ position: 'relative' }}>
                       <button 
                         className="btn-icon" 
