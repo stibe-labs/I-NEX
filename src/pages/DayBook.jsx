@@ -102,7 +102,7 @@ const DayBook = () => {
         cost: '', profit: ''
       });
     } catch (e) {
-      toast.error(editProjectId ? "Failed to update in Frappe." : "Failed to save to Frappe.");
+      toast.error(e.message || (editProjectId ? "Failed to update in Frappe." : "Failed to save to Frappe."));
     } finally {
       setIsSaving(false);
     }

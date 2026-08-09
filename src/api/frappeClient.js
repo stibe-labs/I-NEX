@@ -64,8 +64,27 @@ export const createProject = async (projectData) => {
     
     if (!res.ok) {
       const err = await res.json();
+      let errorMsg = 'Failed to create project';
+      if (err._server_messages) {
+        try {
+          const msgs = JSON.parse(err._server_messages);
+          const parsedMsgs = msgs.map(msg => {
+            const parsed = JSON.parse(msg);
+            // strip html tags from the message
+            return parsed.message ? parsed.message.replace(/<[^>]*>?/gm, '') : msg;
+          });
+          errorMsg = parsedMsgs.join(', ');
+        } catch (e) {
+          errorMsg = err._server_messages;
+        }
+      } else if (err.exc_type) {
+        errorMsg = err.exc_type;
+      } else if (err.exception) {
+        errorMsg = err.exception;
+      }
+      
       console.error("Failed to create project", err);
-      throw new Error(err.message || 'Failed to create project');
+      throw new Error(errorMsg);
     }
     
     const data = await res.json();
@@ -87,8 +106,26 @@ export const updateProject = async (projectId, projectData) => {
     
     if (!res.ok) {
       const err = await res.json();
+      let errorMsg = 'Failed to update project';
+      if (err._server_messages) {
+        try {
+          const msgs = JSON.parse(err._server_messages);
+          const parsedMsgs = msgs.map(msg => {
+            const parsed = JSON.parse(msg);
+            return parsed.message ? parsed.message.replace(/<[^>]*>?/gm, '') : msg;
+          });
+          errorMsg = parsedMsgs.join(', ');
+        } catch (e) {
+          errorMsg = err._server_messages;
+        }
+      } else if (err.exc_type) {
+        errorMsg = err.exc_type;
+      } else if (err.exception) {
+        errorMsg = err.exception;
+      }
+      
       console.error("Failed to update project", err);
-      throw new Error(err.message || 'Failed to update project');
+      throw new Error(errorMsg);
     }
     
     const data = await res.json();
