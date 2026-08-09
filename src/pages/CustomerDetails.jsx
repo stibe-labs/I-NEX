@@ -78,6 +78,16 @@ const CustomerDetails = () => {
         notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}`
       };
       
+      // Validate Phone Number Length
+      if (formData.phone_no && formData.phone_no.trim() !== '+91-') {
+        const phoneDigits = formData.phone_no.replace('+91-', '').replace(/\D/g, '');
+        if (phoneDigits.length !== 10) {
+          toast.error("Phone number must be exactly 10 digits.");
+          setIsSaving(false);
+          return;
+        }
+      }
+
       await createProject(projectData);
       toast.success('Customer Details Saved!');
       
@@ -90,7 +100,11 @@ const CustomerDetails = () => {
         update: '', delivery: ''
       });
     } catch (e) {
-      toast.error(e.message || "Failed to save to Frappe. See console.");
+      let errMsg = e.message || "Failed to save to Frappe. See console.";
+      if (errMsg.includes("is not valid") && errMsg.includes("Phone Number")) {
+        errMsg = "Invalid Phone Number. Please ensure it is exactly 10 digits long.";
+      }
+      toast.error(errMsg);
     } finally {
       setIsSaving(false);
     }
