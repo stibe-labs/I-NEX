@@ -125,10 +125,11 @@ const DayBook = () => {
                 item_code: itemCode,
                 qty: 1,
                 rate: totalAmount,
-                project: savedProjectId
+                project: savedProjectId,
+                description: `Model: ${formData.model_name || 'N/A'}\nConsumption: ${formData.consumption || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
               }
             ],
-            remarks: `Cash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}`
+            remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}`
           });
           toast.success("Sales Invoice Created Automatically!");
         }
