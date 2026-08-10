@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, createSalesInvoice } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, createSalesInvoice, checkSalesInvoiceExists } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -113,25 +113,30 @@ const DayBook = () => {
         
         // Only create invoice if there is some amount
         if (totalAmount > 0 && formData.customer_name) {
-          const custName = await ensureCustomer(formData.customer_name);
-          const itemCode = await ensureItem(formData.job_card);
-          
-          await createSalesInvoice({
-            customer: custName,
-            project: savedProjectId,
-            company: projectData.company,
-            items: [
-              {
-                item_code: itemCode,
-                qty: 1,
-                rate: totalAmount,
-                project: savedProjectId,
-                description: `Model: ${formData.model_name || 'N/A'}\nConsumption: ${formData.consumption || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
-              }
-            ],
-            remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}`
-          });
-          toast.success("Sales Invoice Created Automatically!");
+          const invoiceExists = await checkSalesInvoiceExists(savedProjectId);
+          if (invoiceExists) {
+            console.log("Sales Invoice already exists for this project, skipping auto-creation.");
+          } else {
+            const custName = await ensureCustomer(formData.customer_name);
+            const itemCode = await ensureItem(formData.job_card);
+            
+            await createSalesInvoice({
+              customer: custName,
+              project: savedProjectId,
+              company: projectData.company,
+              items: [
+                {
+                  item_code: itemCode,
+                  qty: 1,
+                  rate: totalAmount,
+                  project: savedProjectId,
+                  description: `Model: ${formData.model_name || 'N/A'}\nConsumption: ${formData.consumption || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
+                }
+              ],
+              remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}`
+            });
+            toast.success("Sales Invoice Created Automatically!");
+          }
         }
       } catch (invoiceErr) {
         console.error("Sales Invoice Auto-Creation Failed", invoiceErr);

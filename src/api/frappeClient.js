@@ -351,3 +351,18 @@ export const createSalesInvoice = async (invoiceData) => {
     throw error;
   }
 };
+
+export const checkSalesInvoiceExists = async (projectId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&limit=1`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.data && data.data.length > 0;
+  } catch (e) {
+    console.error("Failed to check if invoice exists", e);
+    return false;
+  }
+};
