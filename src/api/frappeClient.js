@@ -10,6 +10,34 @@ const getHeaders = () => ({
   'Authorization': `token ${API_KEY}:${API_SECRET}`,
 });
 
+const extractFrappeError = async (res, defaultMsg) => {
+  try {
+    const err = await res.json();
+    let errorMsg = defaultMsg;
+    if (err._server_messages) {
+      try {
+        const msgs = JSON.parse(err._server_messages);
+        const parsedMsgs = msgs.map(msg => {
+          const parsed = JSON.parse(msg);
+          return parsed.message ? parsed.message.replace(/<[^>]*>?/gm, '') : msg;
+        });
+        errorMsg = parsedMsgs.join(', ');
+      } catch (e) {
+        errorMsg = err._server_messages;
+      }
+    } else if (err.exc_type) {
+      errorMsg = err.exc_type;
+    } else if (err.exception) {
+      errorMsg = err.exception;
+    } else if (err.message) {
+      errorMsg = err.message;
+    }
+    return new Error(errorMsg);
+  } catch (e) {
+    return new Error(defaultMsg);
+  }
+};
+
 export const fetchProjects = async () => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Project?fields=["*"]&limit=1000`, {
@@ -63,28 +91,7 @@ export const createProject = async (projectData) => {
     });
     
     if (!res.ok) {
-      const err = await res.json();
-      let errorMsg = 'Failed to create project';
-      if (err._server_messages) {
-        try {
-          const msgs = JSON.parse(err._server_messages);
-          const parsedMsgs = msgs.map(msg => {
-            const parsed = JSON.parse(msg);
-            // strip html tags from the message
-            return parsed.message ? parsed.message.replace(/<[^>]*>?/gm, '') : msg;
-          });
-          errorMsg = parsedMsgs.join(', ');
-        } catch (e) {
-          errorMsg = err._server_messages;
-        }
-      } else if (err.exc_type) {
-        errorMsg = err.exc_type;
-      } else if (err.exception) {
-        errorMsg = err.exception;
-      }
-      
-      console.error("Failed to create project", err);
-      throw new Error(errorMsg);
+      throw await extractFrappeError(res, 'Failed to create project');
     }
     
     const data = await res.json();
@@ -105,27 +112,7 @@ export const updateProject = async (projectId, projectData) => {
     });
     
     if (!res.ok) {
-      const err = await res.json();
-      let errorMsg = 'Failed to update project';
-      if (err._server_messages) {
-        try {
-          const msgs = JSON.parse(err._server_messages);
-          const parsedMsgs = msgs.map(msg => {
-            const parsed = JSON.parse(msg);
-            return parsed.message ? parsed.message.replace(/<[^>]*>?/gm, '') : msg;
-          });
-          errorMsg = parsedMsgs.join(', ');
-        } catch (e) {
-          errorMsg = err._server_messages;
-        }
-      } else if (err.exc_type) {
-        errorMsg = err.exc_type;
-      } else if (err.exception) {
-        errorMsg = err.exception;
-      }
-      
-      console.error("Failed to update project", err);
-      throw new Error(errorMsg);
+      throw await extractFrappeError(res, 'Failed to update project');
     }
     
     const data = await res.json();
@@ -144,9 +131,7 @@ export const deleteProject = async (projectId) => {
       credentials: 'omit',
     });
     if (!res.ok) {
-      const errData = await res.text();
-      console.error("Frappe Delete Error:", errData);
-      throw new Error(`Failed to delete project: ${errData}`);
+      throw await extractFrappeError(res, 'Failed to delete project');
     }
     return true;
   } catch (error) {
@@ -173,9 +158,7 @@ export const addEmployee = async (employeeName, phoneNo) => {
     });
     
     if (!res.ok) {
-      const errData = await res.text();
-      console.error("Frappe Error Response:", errData);
-      throw new Error(`Failed to create employee: ${errData}`);
+      throw await extractFrappeError(res, 'Failed to create employee');
     }
     const data = await res.json();
     return data.data;
@@ -193,9 +176,7 @@ export const deleteEmployee = async (employeeId) => {
       credentials: 'omit',
     });
     if (!res.ok) {
-      const errData = await res.text();
-      console.error("Frappe Delete Error:", errData);
-      throw new Error(`Failed to delete employee: ${errData}`);
+      throw await extractFrappeError(res, 'Failed to delete employee');
     }
     return true;
   } catch (error) {
@@ -222,7 +203,9 @@ export const addBranchUser = async (branchName, username, password) => {
       }),
     });
     
-    if (!res.ok) throw new Error('Failed to create branch user');
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to create branch user');
+    }
     const data = await res.json();
     return data.data;
   } catch (error) {
@@ -249,7 +232,9 @@ export const updateBranchUser = async (userId, username, password) => {
       body: JSON.stringify(payload),
     });
     
-    if (!res.ok) throw new Error('Failed to update branch user');
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to update branch user');
+    }
     const data = await res.json();
     return data.data;
   } catch (error) {

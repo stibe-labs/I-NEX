@@ -69,7 +69,7 @@ const TeamManagement = () => {
       loadData();
       toast.success('Staff created successfully!');
     } catch(err) {
-      toast.error('Failed to create staff.');
+      toast.error(err.message || 'Failed to create staff.');
     }
   };
 
@@ -83,7 +83,7 @@ const TeamManagement = () => {
       loadData();
       toast.success('Technician created successfully!');
     } catch(err) {
-      toast.error('Failed to create technician.');
+      toast.error(err.message || 'Failed to create technician.');
     }
   };
 
@@ -98,7 +98,7 @@ const TeamManagement = () => {
       loadData();
       toast.success('Branch User created successfully!');
     } catch(err) {
-      toast.error('Failed to create branch user.');
+      toast.error(err.message || 'Failed to create branch user.');
     }
   };
 
@@ -117,7 +117,7 @@ const TeamManagement = () => {
       loadData();
       toast.success('User updated successfully');
     } catch(err) {
-      toast.error('Failed to update user.');
+      toast.error(err.message || 'Failed to update user.');
     }
   };
 
@@ -129,7 +129,7 @@ const TeamManagement = () => {
       loadData();
       toast.success('Employee deleted successfully');
     } catch(err) {
-      toast.error('Failed to delete employee.');
+      toast.error(err.message || 'Failed to delete employee.');
     }
   };
 
