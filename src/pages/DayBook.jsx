@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, createSalesInvoice } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -100,6 +100,37 @@ const DayBook = () => {
       } else {
         await createProject(projectData);
         toast.success("DayBook Entry Created!");
+      }
+
+      // Automatically create a Sales Invoice for this DayBook entry
+      try {
+        const cashAmt = parseFloat(formData.cash) || 0;
+        const bankAmt = parseFloat(formData.bank) || 0;
+        const creditAmt = parseFloat(formData.credit) || 0;
+        const totalAmount = cashAmt + bankAmt + creditAmt;
+        
+        // Only create invoice if there is some amount
+        if (totalAmount > 0 && formData.customer_name) {
+          const custName = await ensureCustomer(formData.customer_name);
+          const itemCode = await ensureItem(formData.job_card);
+          
+          await createSalesInvoice({
+            customer: custName,
+            company: projectData.company,
+            items: [
+              {
+                item_code: itemCode,
+                qty: 1,
+                rate: totalAmount
+              }
+            ],
+            remarks: `Cash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}`
+          });
+          toast.success("Sales Invoice Created Automatically!");
+        }
+      } catch (invoiceErr) {
+        console.error("Sales Invoice Auto-Creation Failed", invoiceErr);
+        toast.error("DayBook saved, but " + (invoiceErr.message || "failed to automatically create Sales Invoice."));
       }
       
       await loadData();

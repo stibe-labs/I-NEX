@@ -276,3 +276,78 @@ export const verifyLogin = async (username, password) => {
   }
 };
 
+export const ensureCustomer = async (customerName) => {
+  try {
+    // 1. Try to fetch existing customer
+    const fetchRes = await fetch(`${API_URL}/api/resource/Customer?filters=[["customer_name","=","${encodeURIComponent(customerName)}"]]&limit=1`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    const data = await fetchRes.json();
+    if (data.data && data.data.length > 0) {
+      return data.data[0].name;
+    }
+
+    // 2. If not found, create a generic one
+    const createRes = await fetch(`${API_URL}/api/resource/Customer`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({
+        customer_name: customerName,
+        customer_type: 'Company',
+      })
+    });
+    const createData = await createRes.json();
+    if (createData.data && createData.data.name) {
+      return createData.data.name;
+    }
+  } catch (error) {
+    console.error("Error ensuring Customer:", error);
+  }
+  // Fallback if all else fails, attempt to use the name directly
+  return customerName;
+};
+
+export const ensureItem = async (jobCardCode) => {
+  try {
+    const itemCode = jobCardCode || 'GENERIC-SERVICE';
+    // Attempt to create, if it fails due to duplicate, that's fine
+    await fetch(`${API_URL}/api/resource/Item`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({
+        item_code: itemCode,
+        item_name: `Service ${itemCode}`,
+        item_group: 'Products', // Default ERPNext group
+        is_stock_item: 0
+      })
+    });
+    return itemCode;
+  } catch (error) {
+    console.error("Error ensuring Item:", error);
+    return jobCardCode || 'GENERIC-SERVICE';
+  }
+};
+
+export const createSalesInvoice = async (invoiceData) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(invoiceData),
+    });
+    
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to create Sales Invoice');
+    }
+    
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error creating Sales Invoice", error);
+    throw error;
+  }
+};
