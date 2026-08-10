@@ -176,10 +176,17 @@ const CustomerDetails = () => {
           const name = nameParts.slice(1).join(' ') || '';
           const mPhone = match.custom_phone || extractNote(match.notes, 'Phone');
           
-          if (!prev.name && name) next.name = name;
-          if (!prev.phone_no && mPhone) next.phone_no = mPhone;
-          if (!prev.model && match.custom_model_name) next.model = match.custom_model_name;
-          if (!prev.imei_no && match.custom_imei_number) next.imei_no = match.custom_imei_number;
+          if (name) next.name = name;
+          if (mPhone) next.phone_no = mPhone;
+          if (match.custom_model_name) next.model = match.custom_model_name;
+          if (match.custom_imei_number) next.imei_no = match.custom_imei_number;
+        } else {
+          if (field === 'code') {
+            next.name = '';
+            next.phone_no = '+91-';
+            next.model = '';
+            next.imei_no = '';
+          }
         }
       }
       return next;

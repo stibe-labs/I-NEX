@@ -322,16 +322,20 @@ const DayBook = () => {
         const nameParts = (match.project_name || '').trim().split(/\s+/);
         const name = nameParts.slice(1).join(' ') || '';
         
-        setFormData(prev => {
-          const next = { ...prev };
-          if (!prev.customer_name && name) next.customer_name = name;
-          if (!prev.model_name && match.custom_model_name) next.model_name = match.custom_model_name;
-          return next;
-        });
+        setFormData(prev => ({
+          ...prev,
+          customer_name: name || prev.customer_name,
+          model_name: match.custom_model_name || prev.model_name
+        }));
         
         // This makes sure we update the existing job card instead of creating a duplicate!
         setEditProjectId(match.name);
       } else {
+        setFormData(prev => ({
+          ...prev,
+          customer_name: '',
+          model_name: ''
+        }));
         setEditProjectId(null);
       }
     }
