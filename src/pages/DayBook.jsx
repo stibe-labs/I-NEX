@@ -324,8 +324,8 @@ const DayBook = () => {
         
         setFormData(prev => ({
           ...prev,
-          customer_name: name || prev.customer_name,
-          model_name: match.custom_model_name || prev.model_name
+          customer_name: name || '',
+          model_name: match.custom_model_name || ''
         }));
         
         // This makes sure we update the existing job card instead of creating a duplicate!
