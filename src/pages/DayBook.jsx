@@ -94,11 +94,13 @@ const DayBook = () => {
         notes: newNotes
       };
       
+      let savedProjectId = actualEditProjectId;
       if (actualEditProjectId) {
         await updateProject(actualEditProjectId, projectData);
         toast.success("DayBook Entry Updated!");
       } else {
-        await createProject(projectData);
+        const createdProj = await createProject(projectData);
+        savedProjectId = createdProj.name;
         toast.success("DayBook Entry Created!");
       }
 
@@ -116,6 +118,7 @@ const DayBook = () => {
           
           await createSalesInvoice({
             customer: custName,
+            project: savedProjectId,
             company: projectData.company,
             items: [
               {
