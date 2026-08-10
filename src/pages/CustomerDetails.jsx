@@ -255,6 +255,10 @@ const CustomerDetails = () => {
               <label>Receiver</label>
               <input type="text" className="input-field" list="employee-list" value={formData.receiver} onChange={e => handleInputChange('receiver', e.target.value)} />
             </div>
+            <div className="input-group">
+              <label>Update</label>
+              <input type="text" className="input-field" value={formData.update} onChange={e => handleInputChange('update', e.target.value)} />
+            </div>
           </div>
 
           <datalist id="employee-list">
