@@ -30,7 +30,7 @@ const CustomerDetails = () => {
   const [formData, setFormData] = useState({
     code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
     complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-    update: '', delivery: ''
+    update: '', delivery: '', branch: ''
   });
 
   // Search State
@@ -80,7 +80,7 @@ const CustomerDetails = () => {
 
       const projectData = {
         project_name: `${formData.code} ${formData.name}`,
-        company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
+        company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
         status: 'Open', // default status
         custom_phone: phoneToSave,
         custom_model_name: formData.model,
@@ -98,7 +98,7 @@ const CustomerDetails = () => {
       setFormData({
         code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-        update: '', delivery: ''
+        update: '', delivery: '', branch: ''
       });
     } catch (e) {
       toast.error(e.message || "Failed to save to Frappe. See console.");
@@ -180,7 +180,7 @@ const CustomerDetails = () => {
   const handleClear = () => {
     setFormData({
       code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
-      complaint: '', passcode: '', amount: '', technician: ''
+      complaint: '', passcode: '', amount: '', technician: '', branch: ''
     });
   };
 
@@ -199,6 +199,22 @@ const CustomerDetails = () => {
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>New Customer Detail</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            {user?.role === 'admin' && (
+              <div className="input-group">
+                <label>Branch</label>
+                <select 
+                  className="input-field" 
+                  value={formData.branch} 
+                  onChange={e => handleInputChange('branch', e.target.value)}
+                  required
+                >
+                  <option value="">Select Branch</option>
+                  {Array.from(new Set(projects.map(p => p.company))).filter(Boolean).map((branch, i) => (
+                    <option key={i} value={branch}>{branch}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="input-group">
               <label>Job Card Code</label>
               <input type="text" className="input-field" value={formData.code} onChange={e => handleInputChange('code', e.target.value)} required />

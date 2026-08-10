@@ -31,7 +31,7 @@ const DayBook = () => {
   const [formData, setFormData] = useState({
     sl_no: '', customer_name: '', job_card: '', model_name: '',
     consumption: '', warranty: '', cash: '', bank: '', credit: '',
-    cost: '', profit: ''
+    cost: '', profit: '', branch: ''
   });
 
   // Search State
@@ -77,7 +77,7 @@ const DayBook = () => {
 
       const projectData = {
         project_name: `${formData.job_card} ${formData.customer_name}`,
-        company: user?.role === 'admin' ? 'INEX' : (user?.name || 'INEX'),
+        company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
         status: 'Completed', // Once a Day Book sale is added, status is Completed
         custom_model_name: formData.model_name,
         notes: newNotes
@@ -97,7 +97,7 @@ const DayBook = () => {
       setFormData({
         sl_no: '', customer_name: '', job_card: '', model_name: '',
         consumption: '', warranty: '', cash: '', bank: '', credit: '',
-        cost: '', profit: ''
+        cost: '', profit: '', branch: ''
       });
     } catch (e) {
       toast.error(e.message || (editProjectId ? "Failed to update in Frappe." : "Failed to save to Frappe."));
@@ -122,7 +122,8 @@ const DayBook = () => {
       bank: extractNote(project.notes, 'Bank'),
       credit: extractNote(project.notes, 'Credit'),
       cost: extractNote(project.notes, 'Cost') || project.total_costing_amount || '',
-      profit: extractNote(project.notes, 'Profit') || project.total_billed_amount || ''
+      profit: extractNote(project.notes, 'Profit') || project.total_billed_amount || '',
+      branch: project.company || ''
     });
     setEditProjectId(project.name);
     setIsAdding(true);
@@ -251,7 +252,7 @@ const DayBook = () => {
     setFormData({
       customer_name: '', job_card: '', model_name: '',
       consumption: '', warranty: '', cash: '', bank: '', credit: '',
-      cost: '', profit: ''
+      cost: '', profit: '', branch: ''
     });
   };
 
@@ -299,6 +300,22 @@ const DayBook = () => {
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>{editProjectId ? 'Edit Day Book Entry' : 'New Day Book Entry'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            {user?.role === 'admin' && (
+              <div className="input-group">
+                <label>Branch</label>
+                <select 
+                  className="input-field" 
+                  value={formData.branch} 
+                  onChange={e => handleInputChange('branch', e.target.value)}
+                  required
+                >
+                  <option value="">Select Branch</option>
+                  {Array.from(new Set(projects.map(p => p.company))).filter(Boolean).map((branch, i) => (
+                    <option key={i} value={branch}>{branch}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="input-group">
               <label>Job Card</label>
               <input type="text" className="input-field" value={formData.job_card} onChange={e => handleInputChange('job_card', e.target.value)} required />
