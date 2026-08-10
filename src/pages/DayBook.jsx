@@ -68,7 +68,9 @@ const DayBook = () => {
       
       if (!actualEditProjectId) {
         // Fallback: If they manually typed an existing name, update it instead of crashing.
-        const match = projects.find(p => p.project_name.toLowerCase() === projectName.toLowerCase());
+        // Use regex to normalize spaces so "1 Nithin " matches "1 Nithin"
+        const normalize = (str) => (str || '').trim().replace(/\s+/g, ' ').toLowerCase();
+        const match = projects.find(p => normalize(p.project_name) === normalize(projectName));
         if (match) actualEditProjectId = match.name;
       }
 

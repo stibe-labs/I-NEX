@@ -85,7 +85,10 @@ const CustomerDetails = () => {
         notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
       };
       
-      const existingProject = projects.find(p => p.project_name.toLowerCase() === projectName.toLowerCase());
+      const existingProject = projects.find(p => {
+        const normalize = (str) => (str || '').trim().replace(/\s+/g, ' ').toLowerCase();
+        return normalize(p.project_name) === normalize(projectName);
+      });
       
       if (existingProject) {
         // Fallback: update if it already exists to prevent "must be unique" errors
