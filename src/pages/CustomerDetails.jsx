@@ -77,7 +77,8 @@ const CustomerDetails = () => {
       const projectData = {
         project_name: projectName,
         company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
-        status: 'Open', // default status
+        // We omit status here and add it only for new projects below
+        // status: 'Open',
         custom_phone: phoneToSave,
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
@@ -95,6 +96,7 @@ const CustomerDetails = () => {
         await updateProject(existingProject.name, projectData);
         toast.success('Customer Details Updated!');
       } else {
+        projectData.status = 'Open';
         await createProject(projectData);
         toast.success('Customer Details Saved!');
       }
