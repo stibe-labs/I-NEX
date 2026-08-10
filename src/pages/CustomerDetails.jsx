@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject, deleteProject } from '../api/frappeClient';
+import { fetchProjects, createProject, deleteProject, updateProject } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
 import toast from 'react-hot-toast';
@@ -73,8 +73,9 @@ const CustomerDetails = () => {
       const notesPhoneStr = (!isValidPhone && formData.phone_no && formData.phone_no.trim() !== '+91-') 
                              ? `\nPhone: ${formData.phone_no}` : '';
 
+      const projectName = `${formData.code} ${formData.name}`;
       const projectData = {
-        project_name: `${formData.code} ${formData.name}`,
+        project_name: projectName,
         company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
         status: 'Open', // default status
         custom_phone: phoneToSave,
@@ -84,8 +85,16 @@ const CustomerDetails = () => {
         notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
       };
       
-      await createProject(projectData);
-      toast.success('Customer Details Saved!');
+      const existingProject = projects.find(p => p.project_name.toLowerCase() === projectName.toLowerCase());
+      
+      if (existingProject) {
+        // Fallback: update if it already exists to prevent "must be unique" errors
+        await updateProject(existingProject.name, projectData);
+        toast.success('Customer Details Updated!');
+      } else {
+        await createProject(projectData);
+        toast.success('Customer Details Saved!');
+      }
       
       // Reload and reset
       await loadData();
@@ -144,7 +153,7 @@ const CustomerDetails = () => {
       const next = { ...prev, [field]: value };
       
       // Auto-fill logic when typing Code or Phone No (searches full list)
-      if ((field === 'code' || field === 'phone_no') && value.trim().length >= 4) {
+      if ((field === 'code' || field === 'phone_no') && value.trim().length > 0) {
         const match = projects.find(p => {
           if (field === 'code') {
             const code = (p.project_name || '').trim().split(/\s+/)[0];

@@ -63,7 +63,16 @@ const DayBook = () => {
     
     setIsSaving(true);
     try {
-      const existingProject = editProjectId ? projects.find(p => p.name === editProjectId) : null;
+      let actualEditProjectId = editProjectId;
+      const projectName = `${formData.job_card} ${formData.customer_name}`;
+      
+      if (!actualEditProjectId) {
+        // Fallback: If they manually typed an existing name, update it instead of crashing.
+        const match = projects.find(p => p.project_name.toLowerCase() === projectName.toLowerCase());
+        if (match) actualEditProjectId = match.name;
+      }
+
+      const existingProject = actualEditProjectId ? projects.find(p => p.name === actualEditProjectId) : null;
       const existingNotes = existingProject?.notes || '';
       
       const complaint = extractNote(existingNotes, 'Complaint');
@@ -76,15 +85,15 @@ const DayBook = () => {
       const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nUpdate: ${update}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}\nCost: ${formData.cost}\nProfit: ${formData.profit}`;
 
       const projectData = {
-        project_name: `${formData.job_card} ${formData.customer_name}`,
+        project_name: projectName,
         company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
         status: 'Completed', // Once a Day Book sale is added, status is Completed
         custom_model_name: formData.model_name,
         notes: newNotes
       };
       
-      if (editProjectId) {
-        await updateProject(editProjectId, projectData);
+      if (actualEditProjectId) {
+        await updateProject(actualEditProjectId, projectData);
         toast.success("DayBook Entry Updated!");
       } else {
         await createProject(projectData);
@@ -260,7 +269,7 @@ const DayBook = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Auto-fill logic when typing Code
-    if (field === 'job_card' && value.trim().length >= 4) {
+    if (field === 'job_card' && value.trim().length > 0) {
       const match = projects.find(p => {
         const code = (p.project_name || '').trim().split(/\s+/)[0];
         return code.toLowerCase() === value.trim().toLowerCase();
