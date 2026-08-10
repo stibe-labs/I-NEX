@@ -356,6 +356,10 @@ const DayBook = () => {
               <input type="text" className="input-field" value={formData.bank} onChange={e => handleInputChange('bank', e.target.value)} />
             </div>
             <div className="input-group">
+              <label>Credit</label>
+              <input type="text" className="input-field" value={formData.credit} onChange={e => handleInputChange('credit', e.target.value)} />
+            </div>
+            <div className="input-group">
               <label>Cost</label>
               <input type="text" className="input-field" value={formData.cost} onChange={e => handleInputChange('cost', e.target.value)} />
             </div>
