@@ -101,7 +101,7 @@ const AdminDashboard = () => {
     <div>
       <h1 style={{ marginBottom: '2rem' }}>Admin Overview</h1>
       
-      <div className="dashboard-grid">
+      <div className="dashboard-grid stat-grid">
         <Link to="/customers" className="glass-card stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="stat-card-icon" style={{ background: 'rgba(0, 0, 0, 0.05)', color: 'var(--primary-color)' }}>
             <Users size={32} />
