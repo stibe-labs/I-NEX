@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject, fetchEmployees, deleteProject } from '../api/frappeClient';
+import { fetchProjects, createProject, deleteProject } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
 import toast from 'react-hot-toast';
@@ -8,7 +8,6 @@ import { useAuth } from '../App';
 const CustomerDetails = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,12 +39,8 @@ const CustomerDetails = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [data, empData] = await Promise.all([
-        fetchProjects(),
-        fetchEmployees()
-      ]);
+      const data = await fetchProjects();
       setProjects(data);
-      setEmployees(empData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -180,9 +175,12 @@ const CustomerDetails = () => {
   const handleClear = () => {
     setFormData({
       code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
-      complaint: '', passcode: '', amount: '', technician: '', branch: ''
+      complaint: '', passcode: '', amount: '', receiver: '', technician: '', branch: ''
     });
   };
+
+  const uniqueTechnicians = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Technician')).filter(Boolean)));
+  const uniqueReceivers = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Receiver')).filter(Boolean)));
 
   return (
     <div>
@@ -249,11 +247,11 @@ const CustomerDetails = () => {
             </div>
             <div className="input-group">
               <label>Technician</label>
-              <input type="text" className="input-field" list="employee-list" value={formData.technician} onChange={e => handleInputChange('technician', e.target.value)} />
+              <input type="text" className="input-field" list="technician-list" value={formData.technician} onChange={e => handleInputChange('technician', e.target.value)} />
             </div>
             <div className="input-group">
               <label>Receiver</label>
-              <input type="text" className="input-field" list="employee-list" value={formData.receiver} onChange={e => handleInputChange('receiver', e.target.value)} />
+              <input type="text" className="input-field" list="receiver-list" value={formData.receiver} onChange={e => handleInputChange('receiver', e.target.value)} />
             </div>
             <div className="input-group">
               <label>Update</label>
@@ -261,9 +259,14 @@ const CustomerDetails = () => {
             </div>
           </div>
 
-          <datalist id="employee-list">
-            {employees.map((emp, i) => (
-              <option key={i} value={emp.employee_name} />
+          <datalist id="technician-list">
+            {uniqueTechnicians.map((tech, i) => (
+              <option key={i} value={tech} />
+            ))}
+          </datalist>
+          <datalist id="receiver-list">
+            {uniqueReceivers.map((rec, i) => (
+              <option key={i} value={rec} />
             ))}
           </datalist>
 
