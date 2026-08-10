@@ -22,8 +22,7 @@ const ExpenseIncome = () => {
       const data = await fetchExpenses();
       setItems(data);
     } catch (e) {
-      console.error(e);
-      toast.error('Failed to fetch expenses from PostgreSQL');
+      toast.error(e.message || 'Failed to fetch expenses from PostgreSQL');
     } finally {
       setLoading(false);
     }
@@ -56,7 +55,7 @@ const ExpenseIncome = () => {
       setIsAdding(false);
       handleClear();
     } catch (e) {
-      toast.error("Failed to save to PostgreSQL. See console.");
+      toast.error(e.message || "Failed to save to PostgreSQL. See console.");
     } finally {
       setIsSaving(false);
     }

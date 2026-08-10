@@ -22,8 +22,7 @@ const Accessories = () => {
       const data = await fetchAccessories();
       setItems(data);
     } catch (e) {
-      console.error(e);
-      toast.error('Failed to fetch accessories from PostgreSQL');
+      toast.error(e.message || 'Failed to fetch accessories from PostgreSQL');
     } finally {
       setLoading(false);
     }
@@ -56,7 +55,7 @@ const Accessories = () => {
       setIsAdding(false);
       handleClear();
     } catch (e) {
-      toast.error("Failed to save to PostgreSQL. See console.");
+      toast.error(e.message || "Failed to save to PostgreSQL. See console.");
     } finally {
       setIsSaving(false);
     }

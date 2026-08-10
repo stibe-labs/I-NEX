@@ -122,7 +122,7 @@ const CustomerDetails = () => {
         setOpenMenuId(null);
         await loadData();
       } catch (error) {
-        toast.error("Failed to delete entry from Frappe.");
+        toast.error(error.message || "Failed to delete entry from Frappe.");
       }
     }
   };
