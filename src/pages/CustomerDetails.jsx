@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProjects, createProject, deleteProject, updateProject } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Trash2 } from 'lucide-react';
+import { Plus, Save, X, MoreVertical, Trash2, Edit } from 'lucide-react';
 import { useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -127,6 +127,31 @@ const CustomerDetails = () => {
         toast.error(error.message || "Failed to delete entry from Frappe.");
       }
     }
+  };
+
+  const handleEdit = (p) => {
+    const nameParts = (p.project_name || '').trim().split(/\s+/);
+    const code = nameParts[0] || '';
+    const name = nameParts.slice(1).join(' ') || '';
+    
+    setFormData({
+      code: code,
+      name: name,
+      phone_no: p.custom_phone || extractNote(p.notes, 'Phone') || '+91-',
+      model: p.custom_model_name || '',
+      imei_no: p.custom_imei_number || '',
+      complaint: extractNote(p.notes, 'Complaint') || '',
+      passcode: extractNote(p.notes, 'Passcode') || '',
+      amount: extractNote(p.notes, 'Amount') || p.total_billed_amount || '',
+      receiver: extractNote(p.notes, 'Receiver') || '',
+      technician: extractNote(p.notes, 'Technician') || '',
+      update: extractNote(p.notes, 'Update') || '',
+      delivery: extractNote(p.notes, 'Delivery') || '',
+      branch: p.company || ''
+    });
+    setIsAdding(true);
+    setOpenMenuId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Helper to parse notes for UI display if needed (simplified for now)
@@ -402,6 +427,12 @@ const CustomerDetails = () => {
                             overflow: 'hidden'
                           }}
                         >
+                          <button 
+                            onClick={() => handleEdit(p)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-main)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}
+                          >
+                            <Edit size={14} /> Edit
+                          </button>
                           <button 
                             onClick={() => handleDelete(p.name)}
                             style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
