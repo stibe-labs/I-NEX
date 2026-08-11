@@ -137,7 +137,7 @@ const PurchaseOrder = () => {
       }
 
       const supplierName = await ensureSupplier(formData.supplier_name);
-      const itemCode = await ensureItem(formData.code);
+      const itemCode = await ensureItem(formData.code, formData.item_description);
       
       const qty = parseFloat(formData.qty) || 1;
       const rate = parseFloat(formData.purchase_price) || 0;

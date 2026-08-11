@@ -118,7 +118,7 @@ const DayBook = () => {
             console.log("Sales Invoice already exists for this project, skipping auto-creation.");
           } else {
             const custName = await ensureCustomer(formData.customer_name);
-            const itemCode = await ensureItem(formData.job_card);
+            const itemCode = await ensureItem(formData.job_card, formData.model_name);
             
             await createSalesInvoice({
               customer: custName,

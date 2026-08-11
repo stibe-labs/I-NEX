@@ -309,9 +309,11 @@ export const ensureCustomer = async (customerName) => {
   return customerName;
 };
 
-export const ensureItem = async (jobCardCode) => {
+export const ensureItem = async (jobCardCode, itemDescription = '') => {
   try {
-    const itemCode = jobCardCode || 'GENERIC-SERVICE';
+    const desc = itemDescription ? itemDescription.trim() : 'Service';
+    const itemCode = jobCardCode ? `${jobCardCode} ${desc}`.substring(0, 140) : `GENERIC ${desc}`.substring(0, 140);
+    
     // Attempt to create, if it fails due to duplicate, that's fine
     await fetch(`${API_URL}/api/resource/Item`, {
       method: 'POST',
@@ -319,7 +321,7 @@ export const ensureItem = async (jobCardCode) => {
       credentials: 'omit',
       body: JSON.stringify({
         item_code: itemCode,
-        item_name: `Service ${itemCode}`,
+        item_name: itemCode,
         item_group: 'Products', // Default ERPNext group
         is_stock_item: 0
       })
@@ -327,7 +329,8 @@ export const ensureItem = async (jobCardCode) => {
     return itemCode;
   } catch (error) {
     console.error("Error ensuring Item:", error);
-    return jobCardCode || 'GENERIC-SERVICE';
+    const fallback = jobCardCode ? `${jobCardCode} Service` : 'GENERIC-SERVICE';
+    return fallback.substring(0, 140);
   }
 };
 
