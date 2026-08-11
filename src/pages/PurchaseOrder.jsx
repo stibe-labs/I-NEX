@@ -210,6 +210,8 @@ const PurchaseOrder = () => {
     return supplierStr.includes(term) || codeStr.includes(term);
   });
 
+  const uniqueSuppliers = Array.from(new Set(purchases.map(p => p.supplier).filter(Boolean)));
+
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -256,7 +258,7 @@ const PurchaseOrder = () => {
             </div>
             <div className="input-group">
               <label>Supplier Name</label>
-              <input type="text" className="input-field" value={formData.supplier_name} onChange={e => handleInputChange('supplier_name', e.target.value)} required />
+              <input type="text" className="input-field" list="supplier-list" value={formData.supplier_name} onChange={e => handleInputChange('supplier_name', e.target.value)} required />
             </div>
             <div className="input-group">
               <label>Item Description</label>
@@ -284,6 +286,12 @@ const PurchaseOrder = () => {
             </div>
           </div>
           
+          <datalist id="supplier-list">
+            {uniqueSuppliers.map((supp, i) => (
+              <option key={i} value={supp} />
+            ))}
+          </datalist>
+
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
               <Save size={18} /> {isSaving ? 'Saving...' : 'Save to Frappe'}
