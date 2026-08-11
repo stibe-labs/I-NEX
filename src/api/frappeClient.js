@@ -366,3 +366,73 @@ export const checkSalesInvoiceExists = async (projectId) => {
     return false;
   }
 };
+
+export const ensureSupplier = async (supplierName) => {
+  try {
+    // 1. Try to fetch existing supplier
+    const fetchRes = await fetch(`${API_URL}/api/resource/Supplier?filters=[["supplier_name","=","${encodeURIComponent(supplierName)}"]]&limit=1`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    const data = await fetchRes.json();
+    if (data.data && data.data.length > 0) {
+      return data.data[0].name;
+    }
+
+    // 2. If not found, create a generic one
+    const createRes = await fetch(`${API_URL}/api/resource/Supplier`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({
+        supplier_name: supplierName,
+        supplier_group: 'Local', // Standard default group in ERPNext
+        supplier_type: 'Company',
+      })
+    });
+    const createData = await createRes.json();
+    if (createData.data && createData.data.name) {
+      return createData.data.name;
+    }
+  } catch (error) {
+    console.error("Error ensuring Supplier:", error);
+  }
+  // Fallback if all else fails
+  return supplierName;
+};
+
+export const createPurchaseInvoice = async (invoiceData) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(invoiceData),
+    });
+    
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to create Purchase Invoice');
+    }
+    
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error creating Purchase Invoice", error);
+    throw error;
+  }
+};
+
+export const checkPurchaseInvoiceExists = async (projectId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&limit=1`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.data && data.data.length > 0;
+  } catch (e) {
+    console.error("Failed to check if purchase invoice exists", e);
+    return false;
+  }
+};

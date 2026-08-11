@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign, ShoppingCart } from 'lucide-react';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BranchDashboard from './pages/BranchDashboard';
@@ -10,6 +10,7 @@ import DayBook from './pages/DayBook';
 import TeamManagement from './pages/TeamManagement';
 import Accessories from './pages/Accessories';
 import ExpenseIncome from './pages/ExpenseIncome';
+import PurchaseOrder from './pages/PurchaseOrder';
 import './index.css';
 
 // Simple mockup of auth state for UI flow
@@ -89,6 +90,9 @@ const Layout = ({ children }) => {
           <Link to="/expenses" onClick={closeMenu} className={`nav-link ${isActive('/expenses')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <DollarSign size={18} /> Expenses
           </Link>
+          <Link to="/purchase" onClick={closeMenu} className={`nav-link ${isActive('/purchase')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShoppingCart size={18} /> Purchase
+          </Link>
           {user?.role === 'admin' && (
             <Link to="/team" onClick={closeMenu} className={`nav-link ${isActive('/team')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Settings size={18} /> Team
@@ -138,6 +142,7 @@ function App() {
           <Route path="/customers" element={<ProtectedRoute><Layout><CustomerDetails /></Layout></ProtectedRoute>} />
           <Route path="/accessories" element={<ProtectedRoute><Layout><Accessories /></Layout></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute><Layout><ExpenseIncome /></Layout></ProtectedRoute>} />
+          <Route path="/purchase" element={<ProtectedRoute><Layout><PurchaseOrder /></Layout></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><Layout><DashboardRouter /></Layout></ProtectedRoute>} />
         </Routes>
       </Router>
