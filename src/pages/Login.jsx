@@ -60,7 +60,7 @@ const Login = () => {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem', position: 'relative' }}>
-      <img src="/hna.webp" alt="HNA Logo" style={{ position: 'absolute', top: '20px', left: '20px', height: '50px', objectFit: 'contain' }} />
+      <img src="/hna.webp" alt="HNA Logo" style={{ position: 'fixed', top: '20px', left: '20px', height: '50px', objectFit: 'contain', zIndex: 1000 }} />
       <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem 1.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img src="/INEX%20final%20logo-04.png" alt="INEX Logo" style={{ height: '64px', marginBottom: '0.5rem', objectFit: 'contain' }} />
