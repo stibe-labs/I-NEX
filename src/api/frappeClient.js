@@ -440,6 +440,44 @@ export const checkPurchaseInvoiceExists = async (projectId) => {
   }
 };
 
+export const updatePurchaseInvoice = async (invoiceId, invoiceData) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(invoiceId)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(invoiceData),
+    });
+    
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to update Purchase Invoice');
+    }
+    
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error updating Purchase Invoice", error);
+    throw error;
+  }
+};
+
+export const deletePurchaseInvoice = async (invoiceId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(invoiceId)}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to delete purchase invoice');
+    }
+    return true;
+  } catch (error) {
+    console.error("Error deleting Purchase Invoice", error);
+    throw error;
+  }
+};
+
 export const fetchPurchaseInvoices = async () => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit=1000`, {

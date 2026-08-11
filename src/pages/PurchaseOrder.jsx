@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createPurchaseInvoice, fetchPurchaseInvoices, ensureSupplier, ensureItem, createProject } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { fetchProjects, createPurchaseInvoice, fetchPurchaseInvoices, ensureSupplier, ensureItem, createProject, updatePurchaseInvoice, deletePurchaseInvoice } from '../api/frappeClient';
+import { Plus, Save, X, MoreVertical, Edit, Trash2, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -11,6 +13,7 @@ const PurchaseOrder = () => {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editInvoiceId, setEditInvoiceId] = useState(null);
   
   // Note: We don't implement full edit/delete for Frappe invoices here 
   // as Frappe handles submitted invoices strictly. But we add the UI structure.
@@ -162,11 +165,17 @@ const PurchaseOrder = () => {
         remarks: packedRemarks
       };
 
-      await createPurchaseInvoice(invoiceData);
-      toast.success("Purchase Entry Saved to Frappe!");
+      if (editInvoiceId) {
+        await updatePurchaseInvoice(editInvoiceId, invoiceData);
+        toast.success("Purchase Entry Updated!");
+      } else {
+        await createPurchaseInvoice(invoiceData);
+        toast.success("Purchase Entry Saved to Frappe!");
+      }
       
       await loadData();
       setIsAdding(false);
+      setEditInvoiceId(null);
       handleClear();
     } catch (e) {
       toast.error(e.message || "Failed to save Purchase Entry");
@@ -189,6 +198,95 @@ const PurchaseOrder = () => {
       remarks: '',
       branch: user?.role === 'admin' ? '' : (user?.name || 'INEX')
     });
+  };
+
+  const handleEdit = (invoice, code, custName) => {
+    setFormData({
+      date: invoice.posting_date || new Date().toISOString().split('T')[0],
+      code: code,
+      customer_name: custName,
+      supplier_name: invoice.supplier || '',
+      item_description: extractNote(invoice.remarks, 'Item Description') || '',
+      qty: extractNote(invoice.remarks, 'Quantity') || '',
+      purchase_price: extractNote(invoice.remarks, 'Purchase Price') || '',
+      total_amount: invoice.grand_total || '',
+      mode_of_payment: extractNote(invoice.remarks, 'Mode of Payment') || '',
+      remarks: extractNote(invoice.remarks, 'Remarks') || '',
+      branch: invoice.company || ''
+    });
+    setEditInvoiceId(invoice.name);
+    setIsAdding(true);
+    setOpenMenuId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (invoiceId) => {
+    if (window.confirm("Are you sure you want to delete this purchase entry?")) {
+      try {
+        await deletePurchaseInvoice(invoiceId);
+        toast.success("Entry deleted successfully!");
+        setOpenMenuId(null);
+        await loadData();
+      } catch (error) {
+        toast.error(error.message || "Failed to delete entry from Frappe.");
+      }
+    }
+  };
+
+  const generatePDF = (invoice, code, custName) => {
+    const doc = new jsPDF();
+    const img = new Image();
+    img.src = '/INEX final logo-04.png';
+    img.onload = () => {
+      doc.addImage(img, 'PNG', 14, 10, 50, 25);
+      finishPDF();
+    };
+    img.onerror = () => finishPDF();
+
+    const finishPDF = () => {
+      doc.setLineWidth(0.5);
+      doc.line(14, 38, 196, 38);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("PURCHASE ORDER", 14, 48);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const dateObj = new Date(invoice.posting_date);
+      const dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+      
+      doc.text(`Date: ${dateString}`, 150, 48);
+      doc.text(`Job Card No: ${code}`, 14, 58);
+      doc.text(`Customer Name: ${custName}`, 14, 65);
+      doc.text(`Supplier Name: ${invoice.supplier || '-'}`, 14, 72);
+      
+      const tableData = [
+        ["Item Description", extractNote(invoice.remarks, 'Item Description') || '-'],
+        ["Quantity", extractNote(invoice.remarks, 'Quantity') || '-'],
+        ["Purchase Price", extractNote(invoice.remarks, 'Purchase Price') || '-'],
+        ["Mode of Payment", extractNote(invoice.remarks, 'Mode of Payment') || '-'],
+        ["Remarks", extractNote(invoice.remarks, 'Remarks') || '-']
+      ];
+
+      autoTable(doc, {
+        startY: 82,
+        head: [['Description', 'Details']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185] }
+      });
+
+      const finalY = doc.lastAutoTable.finalY || 82;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Amount: Rs. ${invoice.grand_total || '0'}`, 140, finalY + 15);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text("Thank you for your business!", 105, 280, { align: 'center' });
+      
+      doc.save(`INEX_Purchase_${code}.pdf`);
+      setOpenMenuId(null);
+    };
   };
 
   const filteredPurchases = purchases.filter(p => {
@@ -294,9 +392,9 @@ const PurchaseOrder = () => {
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-              <Save size={18} /> {isSaving ? 'Saving...' : 'Save to Frappe'}
+              <Save size={18} /> {isSaving ? 'Saving...' : (editInvoiceId ? 'Update Entry' : 'Save to Frappe')}
             </button>
-            <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); handleClear(); }}>
+            <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); setEditInvoiceId(null); handleClear(); }}>
               <X size={18} /> Cancel
             </button>
             <button className="btn" style={{ background: 'rgba(255, 107, 107, 0.1)', color: '#ff6b6b' }} onClick={handleClear}>
@@ -346,6 +444,7 @@ const PurchaseOrder = () => {
                 <th>TOTAL AMOUNT</th>
                 <th>MODE OF PAYMENT</th>
                 <th>REMARKS</th>
+                <th style={{ width: '50px', textAlign: 'center' }}>ACT.</th>
               </tr>
             </thead>
             <tbody>
@@ -376,12 +475,57 @@ const PurchaseOrder = () => {
                     <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{p.grand_total || '-'}</td>
                     <td>{extractNote(p.remarks, 'Mode of Payment') || '-'}</td>
                     <td>{extractNote(p.remarks, 'Remarks') || '-'}</td>
+                    <td style={{ position: 'relative' }}>
+                      <button 
+                        className="btn-icon" 
+                        onClick={() => setOpenMenuId(openMenuId === p.name ? null : p.name)}
+                        style={{ padding: '0.25rem', background: 'transparent' }}
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      {openMenuId === p.name && (
+                        <div 
+                          ref={menuRef}
+                          className="dropdown-menu" 
+                          style={{
+                            position: 'absolute',
+                            right: '30px',
+                            top: '10px',
+                            background: 'white',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            minWidth: '140px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <button 
+                            onClick={() => handleEdit(p, code, custName)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid #f1f3f5', fontSize: '0.85rem' }}
+                          >
+                            <Edit size={14} /> Edit
+                          </button>
+                          <button 
+                            onClick={() => generatePDF(p, code, custName)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid #f1f3f5', fontSize: '0.85rem' }}
+                          >
+                            <Download size={14} /> Download PDF
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(p.name)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {filteredPurchases.length === 0 && (
                 <tr>
-                  <td colSpan="10" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
+                  <td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
                 </tr>
               )}
             </tbody>
