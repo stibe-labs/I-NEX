@@ -436,3 +436,26 @@ export const checkPurchaseInvoiceExists = async (projectId) => {
     return false;
   }
 };
+
+export const fetchPurchaseInvoices = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit=1000`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    const data = await res.json();
+    
+    // For each invoice, fetch the items to get item description, qty, rate
+    const invoices = data.data || [];
+    
+    // To avoid too many API calls, we might fetch Purchase Invoice Item table
+    // But Frappe allows fetching child tables if we request the specific document or use a report.
+    // For simplicity, we can parse remarks if we saved details there, or we fetch items individually.
+    // Let's just return invoices and fetch details if needed, or we can just fetch all Purchase Invoice Items.
+    // Actually, saving all these details in `remarks` makes it easy to extract without N+1 queries.
+    return invoices;
+  } catch (error) {
+    console.error("Error fetching Purchase Invoices", error);
+    return [];
+  }
+};
