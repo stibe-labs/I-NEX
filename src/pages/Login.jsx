@@ -59,10 +59,11 @@ const Login = () => {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem', position: 'relative' }}>
+      <img src="/hna.webp" alt="HNA Logo" style={{ position: 'absolute', top: '20px', left: '20px', height: '50px', objectFit: 'contain' }} />
       <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem 1.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/hna%20icon.png" alt="HNA Logo" style={{ height: '64px', marginBottom: '0.5rem', objectFit: 'contain' }} />
+          <img src="/INEX%20final%20logo-04.png" alt="INEX Logo" style={{ height: '64px', marginBottom: '0.5rem', objectFit: 'contain' }} />
           <p style={{ color: 'var(--text-secondary)' }}>Sign in to your account</p>
         </div>
 
