@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createPurchaseInvoice, fetchPurchaseInvoices, ensureSupplier, ensureItem } from '../api/frappeClient';
+import { fetchProjects, createPurchaseInvoice, fetchPurchaseInvoices, ensureSupplier, ensureItem, createProject } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -90,8 +90,6 @@ const PurchaseOrder = () => {
             }
             const nameParts = (match.project_name || '').trim().split(/\s+/);
             next.customer_name = nameParts.slice(1).join(' ') || '';
-        } else {
-            next.customer_name = '';
         }
       }
 
@@ -107,8 +105,8 @@ const PurchaseOrder = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.code) {
-      toast.error("CODE is required");
+    if (!formData.code || !formData.customer_name) {
+      toast.error("CODE and Customer Name are required");
       return;
     }
     if (!formData.supplier_name) {
@@ -127,9 +125,15 @@ const PurchaseOrder = () => {
       if (match) {
           projectId = match.name;
       } else {
-          // If project doesn't exist, you might need to create it or skip project link.
-          // We'll leave project empty if not found, or Frappe might throw an error if mandatory.
-          // Assuming user types a valid code.
+          // Create new Project if not found
+          const projectName = `${formData.code} ${formData.customer_name}`;
+          const projectData = {
+              project_name: projectName,
+              company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+              status: 'Completed',
+          };
+          const createdProj = await createProject(projectData);
+          projectId = createdProj.name;
       }
 
       const supplierName = await ensureSupplier(formData.supplier_name);
@@ -245,11 +249,10 @@ const PurchaseOrder = () => {
             <div className="input-group">
               <label>CODE</label>
               <input type="text" className="input-field" value={formData.code} onChange={e => handleInputChange('code', e.target.value)} required />
-              {formData.code && !formData.customer_name && <small style={{color:'red', marginTop:'0.25rem', display:'block'}}>Job card not found</small>}
             </div>
             <div className="input-group">
               <label>Customer Name</label>
-              <input type="text" className="input-field" value={formData.customer_name} readOnly style={{ background: '#f8f9fa' }} />
+              <input type="text" className="input-field" value={formData.customer_name} onChange={e => handleInputChange('customer_name', e.target.value)} required />
             </div>
             <div className="input-group">
               <label>Supplier Name</label>
