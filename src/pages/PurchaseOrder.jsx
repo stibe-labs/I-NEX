@@ -31,6 +31,7 @@ const PurchaseOrder = () => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     code: '',
+    customer_name: '',
     supplier_name: '',
     item_description: '',
     qty: '',
@@ -83,8 +84,14 @@ const PurchaseOrder = () => {
           const pCode = (p.project_name || '').trim().split(/\s+/)[0];
           return pCode.toLowerCase() === value.trim().toLowerCase();
         });
-        if (match && user?.role === 'admin') {
-            next.branch = match.company || next.branch;
+        if (match) {
+            if (user?.role === 'admin') {
+                next.branch = match.company || next.branch;
+            }
+            const nameParts = (match.project_name || '').trim().split(/\s+/);
+            next.customer_name = nameParts.slice(1).join(' ') || '';
+        } else {
+            next.customer_name = '';
         }
       }
 
@@ -168,6 +175,7 @@ const PurchaseOrder = () => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
       code: '',
+      customer_name: '',
       supplier_name: '',
       item_description: '',
       qty: '',
@@ -237,6 +245,11 @@ const PurchaseOrder = () => {
             <div className="input-group">
               <label>CODE</label>
               <input type="text" className="input-field" value={formData.code} onChange={e => handleInputChange('code', e.target.value)} required />
+              {formData.code && !formData.customer_name && <small style={{color:'red', marginTop:'0.25rem', display:'block'}}>Job card not found</small>}
+            </div>
+            <div className="input-group">
+              <label>Customer Name</label>
+              <input type="text" className="input-field" value={formData.customer_name} readOnly style={{ background: '#f8f9fa' }} />
             </div>
             <div className="input-group">
               <label>Supplier Name</label>
@@ -314,6 +327,7 @@ const PurchaseOrder = () => {
               <tr>
                 <th>DATE</th>
                 <th>CODE</th>
+                <th>CUSTOMER NAME</th>
                 <th>SUPPLIER NAME</th>
                 <th>ITEM DESCRIPTION</th>
                 <th>QTY</th>
@@ -326,9 +340,14 @@ const PurchaseOrder = () => {
             <tbody>
               {filteredPurchases.map((p, i) => {
                 let code = '-';
+                let custName = '-';
                 if (p.project) {
                     const matchProj = projects.find(proj => proj.name === p.project);
-                    if (matchProj) code = (matchProj.project_name || '').trim().split(/\s+/)[0];
+                    if (matchProj) {
+                        const nameParts = (matchProj.project_name || '').trim().split(/\s+/);
+                        code = nameParts[0] || '';
+                        custName = nameParts.slice(1).join(' ') || '';
+                    }
                 }
                 
                 const dateObj = new Date(p.posting_date);
@@ -338,6 +357,7 @@ const PurchaseOrder = () => {
                   <tr key={p.name || i}>
                     <td>{dateString}</td>
                     <td style={{ fontWeight: 600 }}>{code}</td>
+                    <td>{custName}</td>
                     <td>{p.supplier || '-'}</td>
                     <td>{extractNote(p.remarks, 'Item Description') || '-'}</td>
                     <td>{extractNote(p.remarks, 'Quantity') || '-'}</td>
@@ -350,7 +370,7 @@ const PurchaseOrder = () => {
               })}
               {filteredPurchases.length === 0 && (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
                 </tr>
               )}
             </tbody>
