@@ -81,10 +81,10 @@ const DayBook = () => {
       const passcode = extractNote(existingNotes, 'Passcode');
       const receiver = extractNote(existingNotes, 'Receiver');
       const technician = extractNote(existingNotes, 'Technician');
-      const update = extractNote(existingNotes, 'Update');
+      const source = extractNote(existingNotes, 'Source') || extractNote(existingNotes, 'Update');
       const delivery = extractNote(existingNotes, 'Delivery');
       
-      const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nUpdate: ${update}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}\nCost: ${formData.cost}\nProfit: ${formData.profit}`;
+      const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nSource: ${source}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}\nCost: ${formData.cost}\nProfit: ${formData.profit}`;
 
       const projectData = {
         project_name: projectName,

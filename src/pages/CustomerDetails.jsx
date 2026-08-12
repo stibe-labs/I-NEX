@@ -29,7 +29,7 @@ const CustomerDetails = () => {
   const [formData, setFormData] = useState({
     code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
     complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-    update: '', delivery: '', branch: ''
+    source: '', delivery: '', branch: ''
   });
 
   // Search State
@@ -83,7 +83,7 @@ const CustomerDetails = () => {
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
         // Pack the rest into notes
-        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nUpdate: ${formData.update}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
+        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
       };
       
       const existingProject = projects.find(p => {
@@ -145,7 +145,7 @@ const CustomerDetails = () => {
       amount: extractNote(p.notes, 'Amount') || p.total_billed_amount || '',
       receiver: extractNote(p.notes, 'Receiver') || '',
       technician: extractNote(p.notes, 'Technician') || '',
-      update: extractNote(p.notes, 'Update') || '',
+      source: extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '',
       delivery: extractNote(p.notes, 'Delivery') || '',
       branch: p.company || ''
     });
@@ -300,8 +300,14 @@ const CustomerDetails = () => {
               <input type="text" className="input-field" list="receiver-list" value={formData.receiver} onChange={e => handleInputChange('receiver', e.target.value)} />
             </div>
             <div className="input-group">
-              <label>Update</label>
-              <input type="text" className="input-field" value={formData.update} onChange={e => handleInputChange('update', e.target.value)} />
+              <label>Source</label>
+              <select className="input-field" value={formData.source} onChange={e => handleInputChange('source', e.target.value)}>
+                <option value="">Select Source</option>
+                <option value="Walking">Walking</option>
+                <option value="Online">Online</option>
+                <option value="Old">Old</option>
+                <option value="Shop">Shop</option>
+              </select>
             </div>
           </div>
 
@@ -371,7 +377,7 @@ const CustomerDetails = () => {
                 <th>AMOUNT</th>
                 <th>RECEIVER</th>
                 <th>TECHNICIAN</th>
-                <th>UPDATE</th>
+                <th>SOURCE</th>
                 <th>DELIVERY</th>
                 <th style={{ width: '50px', textAlign: 'center' }}>ACT.</th>
               </tr>
@@ -401,7 +407,7 @@ const CustomerDetails = () => {
                     <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{extractNote(p.notes, 'Amount') || p.total_billed_amount || '-'}</td>
                     <td>{extractNote(p.notes, 'Receiver') || '-'}</td>
                     <td>{extractNote(p.notes, 'Technician') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Update') || '-'}</td>
+                    <td>{extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '-'}</td>
                     <td>{extractNote(p.notes, 'Delivery') || '-'}</td>
                     <td style={{ position: 'relative' }}>
                       <button 
