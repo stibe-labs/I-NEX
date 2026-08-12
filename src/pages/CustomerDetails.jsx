@@ -227,6 +227,7 @@ const CustomerDetails = () => {
 
   const uniqueTechnicians = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Technician')).filter(Boolean)));
   const uniqueReceivers = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Receiver')).filter(Boolean)));
+  const uniqueModels = Array.from(new Set(projects.map(p => p.custom_model_name).filter(Boolean)));
 
   return (
     <div>
@@ -273,7 +274,7 @@ const CustomerDetails = () => {
             </div>
             <div className="input-group">
               <label>Model</label>
-              <input type="text" className="input-field" value={formData.model} onChange={e => handleInputChange('model', e.target.value)} />
+              <input type="text" className="input-field" list="model-list" value={formData.model} onChange={e => handleInputChange('model', e.target.value)} />
             </div>
             <div className="input-group">
               <label>IMEI No</label>
@@ -319,6 +320,11 @@ const CustomerDetails = () => {
           <datalist id="receiver-list">
             {uniqueReceivers.map((rec, i) => (
               <option key={i} value={rec} />
+            ))}
+          </datalist>
+          <datalist id="model-list">
+            {uniqueModels.map((model, i) => (
+              <option key={i} value={model} />
             ))}
           </datalist>
 
