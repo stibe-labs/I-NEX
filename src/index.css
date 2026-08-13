@@ -449,3 +449,19 @@ h1 {
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
+
+/* Powered by label */
+.powered-by-label {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  font-weight: 500;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.app-footer {
+  padding: 1.5rem 2rem;
+  margin-top: auto;
+}

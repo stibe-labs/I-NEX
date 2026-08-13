@@ -61,7 +61,7 @@ const Layout = ({ children }) => {
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <nav className="navbar">
         <div className="nav-brand">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -103,9 +103,12 @@ const Layout = ({ children }) => {
           </button>
         </div>
       </nav>
-      <main style={{ padding: '2rem' }}>
+      <main style={{ padding: '2rem', flex: 1 }}>
         {children}
       </main>
+      <footer className="app-footer powered-by-label">
+        POWERED BY STIBE
+      </footer>
     </div>
   );
 };

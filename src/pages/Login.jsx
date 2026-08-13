@@ -59,7 +59,7 @@ const Login = () => {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem', position: 'relative' }}>
       <img src="/hna.png" alt="HNA Logo" style={{ position: 'fixed', top: '20px', left: '20px', width: '200px', objectFit: 'contain', zIndex: 1000 }} />
       <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem 1.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -115,6 +115,9 @@ const Login = () => {
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
+      </div>
+      <div className="powered-by-label" style={{ marginTop: '1.5rem' }}>
+        POWERED BY STIBE
       </div>
     </div>
   );
