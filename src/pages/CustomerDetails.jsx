@@ -48,6 +48,29 @@ const CustomerDetails = () => {
     }
   };
 
+  const getNextJobCardCode = (branchName, allProjects) => {
+    if (!branchName) return '';
+    const baseCodes = {
+      'INEXThodupuzha': 1300,
+      'INEXKaloor': 105913,
+      'INEXPerumbavoor': 104975
+    };
+    
+    const branchProjects = allProjects.filter(p => p.company === branchName);
+    
+    let maxCode = baseCodes[branchName] || 0; 
+    
+    branchProjects.forEach(p => {
+      const codeStr = (p.project_name || '').trim().split(/\s+/)[0];
+      const codeNum = parseInt(codeStr, 10);
+      if (!isNaN(codeNum) && codeNum > maxCode) {
+        maxCode = codeNum;
+      }
+    });
+
+    return maxCode > 0 ? (maxCode + 1).toString() : '';
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -107,7 +130,7 @@ const CustomerDetails = () => {
       setFormData({
         code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-        update: '', delivery: '', branch: ''
+        source: '', delivery: '', branch: ''
       });
     } catch (e) {
       toast.error(e.message || "Failed to save to Frappe. See console.");
@@ -219,9 +242,14 @@ const CustomerDetails = () => {
   };
 
   const handleClear = () => {
+    const initialBranch = user?.role === 'admin' ? '' : (user?.name || '');
+    let nextCode = '';
+    if (initialBranch) {
+      nextCode = getNextJobCardCode(initialBranch, projects);
+    }
     setFormData({
-      code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
-      complaint: '', passcode: '', amount: '', receiver: '', technician: '', branch: ''
+      code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
+      complaint: '', passcode: '', amount: '', receiver: '', technician: '', source: '', delivery: '', branch: initialBranch
     });
   };
 
@@ -234,7 +262,19 @@ const CustomerDetails = () => {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Customer Details</h1>
         {!isAdding && (
-          <button className="btn btn-primary" onClick={() => setIsAdding(true)}>
+          <button className="btn btn-primary" onClick={() => {
+            const initialBranch = user?.role === 'admin' ? '' : (user?.name || '');
+            let nextCode = '';
+            if (initialBranch) {
+               nextCode = getNextJobCardCode(initialBranch, projects);
+            }
+            setFormData({
+              code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
+              complaint: '', passcode: '', amount: '', receiver: '', technician: '',
+              source: '', delivery: '', branch: initialBranch
+            });
+            setIsAdding(true);
+          }}>
             <Plus size={18} /> Add Entry
           </button>
         )}
@@ -250,7 +290,11 @@ const CustomerDetails = () => {
                 <select 
                   className="input-field" 
                   value={formData.branch} 
-                  onChange={e => handleInputChange('branch', e.target.value)}
+                  onChange={e => {
+                    const selectedBranch = e.target.value;
+                    const nextCode = getNextJobCardCode(selectedBranch, projects);
+                    setFormData(prev => ({ ...prev, branch: selectedBranch, code: nextCode }));
+                  }}
                   required
                 >
                   <option value="">Select Branch</option>
