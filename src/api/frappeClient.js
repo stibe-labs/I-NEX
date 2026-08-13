@@ -370,6 +370,56 @@ export const checkSalesInvoiceExists = async (projectId) => {
   }
 };
 
+export const getLinkedSalesInvoices = async (projectId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&fields=["name","docstatus"]&limit=100`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
+  } catch (e) {
+    console.error("Failed to fetch linked sales invoices", e);
+    return [];
+  }
+};
+
+export const cancelSalesInvoice = async (invoiceId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice/${encodeURIComponent(invoiceId)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({ docstatus: 2 }),
+    });
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to cancel Sales Invoice');
+    }
+    return true;
+  } catch (error) {
+    console.error("Error canceling Sales Invoice", error);
+    throw error;
+  }
+};
+
+export const deleteSalesInvoice = async (invoiceId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice/${encodeURIComponent(invoiceId)}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to delete Sales Invoice');
+    }
+    return true;
+  } catch (error) {
+    console.error("Error deleting Sales Invoice", error);
+    throw error;
+  }
+};
+
 export const ensureSupplier = async (supplierName) => {
   try {
     // 1. Try to fetch existing supplier

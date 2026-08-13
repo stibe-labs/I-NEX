@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, createSalesInvoice, checkSalesInvoiceExists } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -12,6 +12,8 @@ const DayBook = () => {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, project: null });
   const [editProjectId, setEditProjectId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
@@ -183,16 +185,37 @@ const DayBook = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (projectId) => {
-    if (window.confirm("Are you sure you want to delete this entry?")) {
-      try {
-        await deleteProject(projectId);
-        toast.success("Entry deleted successfully!");
-        setOpenMenuId(null);
-        await loadData();
-      } catch (error) {
-        toast.error(error.message || "Failed to delete entry from Frappe.");
+  const handleDelete = (project) => {
+    setDeleteModal({ isOpen: true, project });
+    setOpenMenuId(null);
+  };
+
+  const confirmDelete = async () => {
+    const project = deleteModal.project;
+    if (!project) return;
+    
+    setIsDeleting(true);
+    try {
+      // 1. Find linked Sales Invoices
+      const linkedInvoices = await getLinkedSalesInvoices(project.name);
+      
+      // 2. Cancel and Delete each invoice
+      for (const invoice of linkedInvoices) {
+        if (invoice.docstatus === 1) { // 1 = Submitted
+          await cancelSalesInvoice(invoice.name);
+        }
+        await deleteSalesInvoice(invoice.name);
       }
+
+      // 3. Delete Project
+      await deleteProject(project.name);
+      toast.success("Entry and linked invoice deleted successfully!");
+      setDeleteModal({ isOpen: false, project: null });
+      await loadData();
+    } catch (error) {
+      toast.error(error.message || "Failed to delete entry and linked invoice.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -529,7 +552,7 @@ const DayBook = () => {
                             <Download size={14} /> Download PDF
                           </button>
                           <button 
-                            onClick={() => handleDelete(p.name)}
+                            onClick={() => handleDelete(p)}
                             style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
                           >
                             <Trash2 size={14} /> Delete
@@ -549,6 +572,58 @@ const DayBook = () => {
           </table>
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && deleteModal.project && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div className="glass-card" style={{ maxWidth: '400px', width: '90%', animation: 'fadeIn 0.2s ease-out', padding: '1.5rem' }}>
+            <h3 style={{ color: '#ff6b6b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Trash2 size={20} /> Confirm Deletion
+            </h3>
+            <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.4' }}>
+              Are you sure you want to permanently delete this entry? This action will also delete the linked Sales Invoice and cannot be undone.
+            </p>
+            
+            {(() => {
+              const p = deleteModal.project;
+              const nameParts = (p.project_name || '').trim().split(/\s+/);
+              const code = nameParts[0] || '';
+              const name = nameParts.slice(1).join(' ') || '';
+              return (
+                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <div style={{ marginBottom: '0.5rem' }}><strong>Job Card:</strong> {code}</div>
+                  <div style={{ marginBottom: '0.5rem' }}><strong>Customer:</strong> {name}</div>
+                  <div><strong>Total Amount:</strong> Rs. {extractNote(p.notes, 'Profit') || p.total_billed_amount || '0'}</div>
+                </div>
+              )
+            })()}
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn" 
+                style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--text-color)' }}
+                onClick={() => setDeleteModal({ isOpen: false, project: null })}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                style={{ background: '#ff6b6b', color: 'white' }}
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
