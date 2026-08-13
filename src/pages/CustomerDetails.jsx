@@ -121,6 +121,16 @@ const CustomerDetails = () => {
         await updateProject(existingProject.name, projectData);
         toast.success('Customer Details Updated!');
       } else {
+        // NEW PROJECT: Fetch fresh data to prevent race conditions (duplicate Job Card Codes)
+        const latestProjects = await fetchProjects();
+        const currentNextCode = getNextJobCardCode(projectData.company, latestProjects);
+        
+        // If the code they are trying to save is already taken, bump it
+        if (parseInt(formData.code, 10) < parseInt(currentNextCode, 10)) {
+          projectData.project_name = `${currentNextCode} ${formData.name}`;
+          toast.success(`Job Card Code auto-updated to ${currentNextCode} to prevent duplicates.`);
+        }
+        
         projectData.status = 'Open';
         await createProject(projectData);
         toast.success('Customer Details Saved!');
