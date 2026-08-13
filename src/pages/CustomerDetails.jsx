@@ -54,7 +54,7 @@ const CustomerDetails = () => {
     const normalizedBranch = branchName.toLowerCase().replace(/\s+/g, '');
     const baseCodes = {
       'inexthodupuzha': 1300,
-      'inexkaloor': 105913,
+      'inexkaloor': 105917,
       'inexperumbavoor': 104975
     };
     
