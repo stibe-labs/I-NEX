@@ -117,7 +117,8 @@ const Login = () => {
         </form>
       </div>
       <div className="powered-by-label" style={{ marginTop: '1.5rem' }}>
-        POWERED BY STIBE
+        <span>powered by</span>
+        <img src="/stibe-logo.png" alt="STIBE" className="powered-by-logo" />
       </div>
     </div>
   );

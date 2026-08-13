@@ -107,7 +107,8 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <footer className="app-footer powered-by-label">
-        POWERED BY STIBE
+        <span>powered by</span>
+        <img src="/stibe-logo.png" alt="STIBE" className="powered-by-logo" />
       </footer>
     </div>
   );
