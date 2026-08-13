@@ -50,15 +50,17 @@ const CustomerDetails = () => {
 
   const getNextJobCardCode = (branchName, allProjects) => {
     if (!branchName) return '';
+    
+    const normalizedBranch = branchName.toLowerCase().replace(/\s+/g, '');
     const baseCodes = {
-      'INEXThodupuzha': 1300,
-      'INEXKaloor': 105913,
-      'INEXPerumbavoor': 104975
+      'inexthodupuzha': 1300,
+      'inexkaloor': 105913,
+      'inexperumbavoor': 104975
     };
     
     const branchProjects = allProjects.filter(p => p.company === branchName);
     
-    let maxCode = baseCodes[branchName] || 0; 
+    let maxCode = baseCodes[normalizedBranch] || 0; 
     
     branchProjects.forEach(p => {
       const codeStr = (p.project_name || '').trim().split(/\s+/)[0];
