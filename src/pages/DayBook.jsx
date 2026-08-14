@@ -270,7 +270,7 @@ const DayBook = () => {
       doc.setFontSize(10);
       doc.text("MOBILE NO.", 165, 18, { align: 'center' });
       doc.setFontSize(14);
-      doc.text(phoneNoTop, 165, 26, { align: 'center' });
+      doc.text(String(phoneNoTop || ''), 165, 26, { align: 'center' });
 
       // Address Top
       doc.setTextColor(0, 0, 0);
@@ -279,7 +279,7 @@ const DayBook = () => {
       doc.text("PREMIUM MOBILE SERVICE CENTER", 14, 30);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
-      doc.text(addressTop, 14, 35);
+      doc.text(String(addressTop || ''), 14, 35);
       
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.5);
@@ -310,22 +310,22 @@ const DayBook = () => {
       doc.setFont("helvetica", "bold");
       doc.text("Date :", 18, 75.5);
       doc.setFont("helvetica", "normal");
-      doc.text(dateString, 45, 75.5);
+      doc.text(String(dateString || ''), 45, 75.5);
 
       doc.setFont("helvetica", "bold");
       doc.text("Customer Name :", 104, 75.5);
       doc.setFont("helvetica", "normal");
-      doc.text(customerName, 135, 75.5);
+      doc.text(String(customerName || ''), 135, 75.5);
 
       doc.setFont("helvetica", "bold");
       doc.text("Warranty :", 18, 83.5);
       doc.setFont("helvetica", "normal");
-      doc.text(warranty, 45, 83.5);
+      doc.text(String(warranty || ''), 45, 83.5);
 
       doc.setFont("helvetica", "bold");
       doc.text("Customer NO :", 104, 83.5);
       doc.setFont("helvetica", "normal");
-      doc.text(jobCard, 135, 83.5);
+      doc.text(String(jobCard || ''), 135, 83.5);
 
       // Items Table
       const tableStartY = 95;
@@ -359,10 +359,10 @@ const DayBook = () => {
         doc.line(155, y, 155, y + rowHeight);
         
         if (i === 0) {
-          doc.text(complaint, 42, y + 7, { align: 'center' });
-          doc.text(model, 92, y + 7, { align: 'center' });
-          doc.text(imei, 135, y + 7, { align: 'center' });
-          doc.text(amount, 175, y + 7, { align: 'center' });
+          doc.text(String(complaint || ''), 42, y + 7, { align: 'center' });
+          doc.text(String(model || ''), 92, y + 7, { align: 'center' });
+          doc.text(String(imei || ''), 135, y + 7, { align: 'center' });
+          doc.text(String(amount || ''), 175, y + 7, { align: 'center' });
         }
       }
 
@@ -377,7 +377,7 @@ const DayBook = () => {
       doc.setFont("helvetica", "bold");
       doc.text("TOTAL PAID", 18, totalY + 8);
       
-      doc.text(amount, 175, totalY + 8, { align: 'center' });
+      doc.text(String(amount || ''), 175, totalY + 8, { align: 'center' });
 
       // CUSTOMER DECLARATION
       const decY = totalY + 20;
@@ -420,11 +420,11 @@ const DayBook = () => {
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      if (phoneNoBottom) doc.text(phoneNoBottom, 18, pageHeight - 27);
+      if (phoneNoBottom) doc.text(String(phoneNoBottom), 18, pageHeight - 27);
       
       doc.text(`Email: ${email}`, 70, pageHeight - 27);
       
-      const addrLines = doc.splitTextToSize(addressBottom, 70);
+      const addrLines = doc.splitTextToSize(String(addressBottom || ''), 70);
       doc.text(addrLines, 120, pageHeight - 31);
 
       doc.setFillColor(29, 62, 137);
