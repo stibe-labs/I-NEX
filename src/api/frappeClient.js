@@ -454,30 +454,30 @@ export const ensureSupplier = async (supplierName) => {
   return supplierName;
 };
 
-export const createPurchaseInvoice = async (invoiceData) => {
+export const createPurchaseReceipt = async (receiptData) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt`, {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify(receiptData),
     });
     
     if (!res.ok) {
-      throw await extractFrappeError(res, 'Failed to create Purchase Invoice');
+      throw await extractFrappeError(res, 'Failed to create Purchase Receipt');
     }
     
     const data = await res.json();
     return data.data;
   } catch (error) {
-    console.error("Error creating Purchase Invoice", error);
+    console.error("Error creating Purchase Receipt", error);
     throw error;
   }
 };
 
-export const checkPurchaseInvoiceExists = async (projectId) => {
+export const checkPurchaseReceiptExists = async (projectId) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&limit=1`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt?filters=[["project","=","${encodeURIComponent(projectId)}"]]&limit=1`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -485,68 +485,68 @@ export const checkPurchaseInvoiceExists = async (projectId) => {
     const data = await res.json();
     return data.data && data.data.length > 0;
   } catch (e) {
-    console.error("Failed to check if purchase invoice exists", e);
+    console.error("Failed to check if purchase receipt exists", e);
     return false;
   }
 };
 
-export const updatePurchaseInvoice = async (invoiceId, invoiceData) => {
+export const updatePurchaseReceipt = async (receiptId, receiptData) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(invoiceId)}`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt/${encodeURIComponent(receiptId)}`, {
       method: 'PUT',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify(receiptData),
     });
     
     if (!res.ok) {
-      throw await extractFrappeError(res, 'Failed to update Purchase Invoice');
+      throw await extractFrappeError(res, 'Failed to update Purchase Receipt');
     }
     
     const data = await res.json();
     return data.data;
   } catch (error) {
-    console.error("Error updating Purchase Invoice", error);
+    console.error("Error updating Purchase Receipt", error);
     throw error;
   }
 };
 
-export const deletePurchaseInvoice = async (invoiceId) => {
+export const deletePurchaseReceipt = async (receiptId) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(invoiceId)}`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt/${encodeURIComponent(receiptId)}`, {
       method: 'DELETE',
       headers: getHeaders(),
       credentials: 'omit',
     });
     if (!res.ok) {
-      throw await extractFrappeError(res, 'Failed to delete purchase invoice');
+      throw await extractFrappeError(res, 'Failed to delete purchase receipt');
     }
     return true;
   } catch (error) {
-    console.error("Error deleting Purchase Invoice", error);
+    console.error("Error deleting Purchase Receipt", error);
     throw error;
   }
 };
 
-export const fetchPurchaseInvoices = async () => {
+export const fetchPurchaseReceipts = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit=1000`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit=1000`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
     const data = await res.json();
     
-    // For each invoice, fetch the items to get item description, qty, rate
-    const invoices = data.data || [];
+    // For each receipt, fetch the items to get item description, qty, rate
+    const receipts = data.data || [];
     
-    // To avoid too many API calls, we might fetch Purchase Invoice Item table
+    // To avoid too many API calls, we might fetch Purchase Receipt Item table
     // But Frappe allows fetching child tables if we request the specific document or use a report.
     // For simplicity, we can parse remarks if we saved details there, or we fetch items individually.
-    // Let's just return invoices and fetch details if needed, or we can just fetch all Purchase Invoice Items.
+    // Let's just return receipts and fetch details if needed, or we can just fetch all Purchase Receipt Items.
     // Actually, saving all these details in `remarks` makes it easy to extract without N+1 queries.
-    return invoices;
+    return receipts;
   } catch (error) {
-    console.error("Error fetching Purchase Invoices", error);
+    console.error("Error fetching Purchase Receipts", error);
     return [];
   }
 };

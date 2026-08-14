@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createPurchaseInvoice, fetchPurchaseInvoices, ensureSupplier, ensureItem, createProject, updatePurchaseInvoice, deletePurchaseInvoice } from '../api/frappeClient';
+import { fetchProjects, createPurchaseReceipt, fetchPurchaseReceipts, ensureSupplier, ensureItem, createProject, updatePurchaseReceipt, deletePurchaseReceipt } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Trash2, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -53,7 +53,7 @@ const PurchaseOrder = () => {
     try {
       const [projData, invData] = await Promise.all([
         fetchProjects(),
-        fetchPurchaseInvoices()
+        fetchPurchaseReceipts()
       ]);
       setProjects(projData);
       setPurchases(invData);
@@ -166,10 +166,10 @@ const PurchaseOrder = () => {
       };
 
       if (editInvoiceId) {
-        await updatePurchaseInvoice(editInvoiceId, invoiceData);
+        await updatePurchaseReceipt(editInvoiceId, invoiceData);
         toast.success("Purchase Entry Updated!");
       } else {
-        await createPurchaseInvoice(invoiceData);
+        await createPurchaseReceipt(invoiceData);
         toast.success("Purchase Entry Saved to Frappe!");
       }
       
@@ -223,7 +223,7 @@ const PurchaseOrder = () => {
   const handleDelete = async (invoiceId) => {
     if (window.confirm("Are you sure you want to delete this purchase entry?")) {
       try {
-        await deletePurchaseInvoice(invoiceId);
+        await deletePurchaseReceipt(invoiceId);
         toast.success("Entry deleted successfully!");
         setOpenMenuId(null);
         await loadData();
