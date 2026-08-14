@@ -228,30 +228,25 @@ const DayBook = () => {
     let phoneNoTop = '';
     let addressTop = '';
     let addressBottom = '';
-    let phoneNoBottom = '';
     const email = 'inexcarekochi@gmail.com';
 
     if (branchName.includes('thodupuzha')) {
       phoneNoTop = '9633311255';
       addressTop = 'Oppo Jyothi super bazar, Near tee cee restaurant, Thodupuzha, 685588';
       addressBottom = 'Oppo Jyothi super bazar, Near tee cee restaurant, Thodupuzha, 685588';
-      phoneNoBottom = '0484 359 9993';
     } else if (branchName.includes('kaloor')) {
       phoneNoTop = '9993335197';
       addressTop = 'iNex Metro pillar-585, near Lenin Center, Kaloor, Kochi, Kerala 682017';
       addressBottom = 'Metro Pillar-585, Kaloor, Kochi, Kerala 682017';
-      phoneNoBottom = '';
     } else if (branchName.includes('perumbavoor')) {
       phoneNoTop = '9993335196';
-      addressTop = 'OppoCrystaHypermarket,Am road, Perumbavoor ,683542';
+      addressTop = 'Oppo Crysta Hyper market, Am road, Perumbavoor ,683542';
       addressBottom = 'Oppo crysta Hyper market, Am road, Perumbavoor ,683542';
-      phoneNoBottom = '';
     } else {
       // Default
       phoneNoTop = '9993335197';
       addressTop = 'Premium Mobile & Laptop Service Center';
       addressBottom = 'Premium Mobile & Laptop Service Center';
-      phoneNoBottom = '';
     }
 
     const doc = new jsPDF();
@@ -274,9 +269,6 @@ const DayBook = () => {
 
       // Address Top
       doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text("PREMIUM MOBILE SERVICE CENTER", 14, 30);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.text(String(addressTop || ''), 14, 35);
@@ -335,9 +327,9 @@ const DayBook = () => {
       
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.text("DESCRIPTION", 42, tableStartY + 6.5, { align: 'center' });
-      doc.text("MODEL", 92, tableStartY + 6.5, { align: 'center' });
-      doc.text("IMEI NO", 135, tableStartY + 6.5, { align: 'center' });
+      doc.text("MODEL", 42, tableStartY + 6.5, { align: 'center' });
+      doc.text("IMEI NO", 92, tableStartY + 6.5, { align: 'center' });
+      doc.text("CONSUMPTION", 135, tableStartY + 6.5, { align: 'center' });
       doc.text("AMOUNT", 175, tableStartY + 6.5, { align: 'center' });
 
       doc.setTextColor(0, 0, 0);
@@ -359,9 +351,9 @@ const DayBook = () => {
         doc.line(155, y, 155, y + rowHeight);
         
         if (i === 0) {
-          doc.text(String(complaint || ''), 42, y + 7, { align: 'center' });
-          doc.text(String(model || ''), 92, y + 7, { align: 'center' });
-          doc.text(String(imei || ''), 135, y + 7, { align: 'center' });
+          doc.text(String(model || ''), 42, y + 7, { align: 'center' });
+          doc.text(String(imei || ''), 92, y + 7, { align: 'center' });
+          doc.text(String(complaint || '-'), 135, y + 7, { align: 'center' });
           doc.text(String(amount || ''), 175, y + 7, { align: 'center' });
         }
       }
@@ -420,12 +412,11 @@ const DayBook = () => {
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      if (phoneNoBottom) doc.text(String(phoneNoBottom), 18, pageHeight - 27);
+      // Add email text
+      doc.text(`Email: ${email}`, 18, pageHeight - 27);
       
-      doc.text(`Email: ${email}`, 70, pageHeight - 27);
-      
-      const addrLines = doc.splitTextToSize(String(addressBottom || ''), 70);
-      doc.text(addrLines, 120, pageHeight - 31);
+      // Right align the address
+      doc.text(String(addressBottom || ''), 196 - 4, pageHeight - 27, { align: 'right' });
 
       doc.setFillColor(29, 62, 137);
       doc.rect(14, pageHeight - 20, 182, 10, 'F');
