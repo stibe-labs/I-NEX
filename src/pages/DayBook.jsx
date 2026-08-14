@@ -325,7 +325,7 @@ const DayBook = () => {
       doc.setFont("helvetica", "bold");
       doc.text("Customer NO :", 104, 83.5);
       doc.setFont("helvetica", "normal");
-      doc.text(customerPhone, 135, 83.5);
+      doc.text(jobCard, 135, 83.5);
 
       // Items Table
       const tableStartY = 95;
