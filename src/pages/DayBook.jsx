@@ -223,71 +223,227 @@ const DayBook = () => {
     const nameParts = (project.project_name || '').trim().split(/\s+/);
     const jobCard = nameParts[0] || '';
     const customerName = nameParts.slice(1).join(' ') || '';
-    const doc = new jsPDF();
+    const branchName = (project.company || '').toLowerCase().replace(/\s+/g, '');
     
-    // Add Logo
-    const img = new Image();
-    img.src = '/INEX final logo-04.png';
-    img.onload = () => {
-      // Draw Logo on the left side
-      // x=14, y=10, width=40, height=20 (Adjusted to maintain some aspect ratio/size)
-      doc.addImage(img, 'PNG', 14, 10, 50, 25);
-      finishPDF();
-    };
-    img.onerror = () => {
-      // Proceed without logo
-      finishPDF();
+    let phoneNoTop = '';
+    let addressTop = '';
+    let addressBottom = '';
+    let phoneNoBottom = '';
+    const email = 'inexcarekochi@gmail.com';
+
+    if (branchName.includes('thodupuzha')) {
+      phoneNoTop = '9633311255';
+      addressTop = 'Oppo Jyothi super bazar, Near tee cee restaurant, Thodupuzha, 685588';
+      addressBottom = 'Oppo Jyothi super bazar, Near tee cee restaurant, Thodupuzha, 685588';
+      phoneNoBottom = '0484 359 9993';
+    } else if (branchName.includes('kaloor')) {
+      phoneNoTop = '9993335197';
+      addressTop = 'iNex Metro pillar-585, near Lenin Center, Kaloor, Kochi, Kerala 682017';
+      addressBottom = 'Metro Pillar-585, Kaloor, Kochi, Kerala 682017';
+      phoneNoBottom = '';
+    } else if (branchName.includes('perumbavoor')) {
+      phoneNoTop = '9993335196';
+      addressTop = 'OppoCrystaHypermarket,Am road, Perumbavoor ,683542';
+      addressBottom = 'Oppo crysta Hyper market, Am road, Perumbavoor ,683542';
+      phoneNoBottom = '';
+    } else {
+      // Default
+      phoneNoTop = '9993335197';
+      addressTop = 'Premium Mobile & Laptop Service Center';
+      addressBottom = 'Premium Mobile & Laptop Service Center';
+      phoneNoBottom = '';
     }
 
-    const finishPDF = () => {
+    const doc = new jsPDF();
+    
+    const img = new Image();
+    img.src = '/INEX final logo-04.png';
+    
+    const drawContent = () => {
+      // HEADER
+      // Mobile No Block (Top Right)
+      doc.setFillColor(0, 0, 0);
+      doc.rect(130, 10, 70, 25, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("MOBILE NO.", 165, 18, { align: 'center' });
+      doc.setFontSize(14);
+      doc.text(phoneNoTop, 165, 26, { align: 'center' });
+
+      // Address Top
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("PREMIUM MOBILE SERVICE CENTER", 14, 30);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.text(addressTop, 14, 35);
+      
+      doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.5);
       doc.line(14, 38, 196, 38);
 
-      // Customer Details
-      doc.setFontSize(12);
+      // INVOICE Header
+      doc.setFillColor(29, 62, 137); // Dark Blue
+      doc.rect(60, 45, 90, 15, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
       doc.setFont("helvetica", "bold");
-      doc.text("RECEIPT / BILL", 14, 48);
+      doc.text("INVOICE", 105, 55, { align: 'center' });
 
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 48);
-      
-      doc.text(`Job Card No: ${jobCard}`, 14, 58);
-      doc.text(`Customer Name: ${customerName}`, 14, 65);
-      
-      // Table Data
-      const tableData = [
-        ["Model Name", project.custom_model_name || '-'],
-        ["Consumption", extractNote(project.notes, 'Consumption') || '-'],
-        ["Warranty", extractNote(project.notes, 'Warranty') || '-'],
-        ["Cash Paid", extractNote(project.notes, 'Cash') || '-'],
-        ["Bank Paid", extractNote(project.notes, 'Bank') || '-'],
-        ["Credit", extractNote(project.notes, 'Credit') || '-']
-      ];
+      // Customer Info Box
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.3);
+      doc.rect(14, 70, 182, 16); // Outer box
+      doc.line(14, 78, 196, 78); // Horizontal separator
+      doc.line(100, 70, 100, 86); // Vertical separator
 
-      autoTable(doc, {
-        startY: 75,
-        head: [['Description', 'Details']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: { fillColor: [41, 128, 185] }
-      });
-
-      const finalY = doc.lastAutoTable.finalY || 75;
-      
-      // Total Amount
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      const profit = extractNote(project.notes, 'Profit') || project.total_billed_amount || '0';
-      doc.text(`Total Amount: Rs. ${profit}`, 140, finalY + 15);
-
-      // Footer
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text("Thank you for your business!", 105, 280, { align: 'center' });
       
-      doc.save(`INEX_Bill_${jobCard}.pdf`);
+      const dateString = new Date().toLocaleDateString();
+      const customerPhone = project.custom_phone || extractNote(project.notes, 'Phone') || '-';
+      const warranty = extractNote(project.notes, 'Warranty') || '-';
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Date :", 18, 75.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(dateString, 45, 75.5);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Customer Name :", 104, 75.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(customerName, 135, 75.5);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Warranty :", 18, 83.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(warranty, 45, 83.5);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Customer NO :", 104, 83.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(customerPhone, 135, 83.5);
+
+      // Items Table
+      const tableStartY = 95;
+      
+      doc.setFillColor(29, 62, 137); // Dark Blue Header
+      doc.rect(14, tableStartY, 182, 10, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.text("DESCRIPTION", 42, tableStartY + 6.5, { align: 'center' });
+      doc.text("MODEL", 92, tableStartY + 6.5, { align: 'center' });
+      doc.text("IMEI NO", 135, tableStartY + 6.5, { align: 'center' });
+      doc.text("AMOUNT", 175, tableStartY + 6.5, { align: 'center' });
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "normal");
+      
+      const complaint = extractNote(project.notes, 'Complaint') || '-';
+      const model = project.custom_model_name || '-';
+      const imei = project.custom_imei_number || '-';
+      const amount = extractNote(project.notes, 'Profit') || project.total_billed_amount || '0';
+
+      const rowHeight = 12;
+      for (let i = 0; i < 4; i++) {
+        const y = tableStartY + 10 + (i * rowHeight);
+        doc.setDrawColor(0, 0, 0);
+        doc.rect(14, y, 182, rowHeight);
+        // Vertical lines
+        doc.line(70, y, 70, y + rowHeight);
+        doc.line(115, y, 115, y + rowHeight);
+        doc.line(155, y, 155, y + rowHeight);
+        
+        if (i === 0) {
+          doc.text(complaint, 42, y + 7, { align: 'center' });
+          doc.text(model, 92, y + 7, { align: 'center' });
+          doc.text(imei, 135, y + 7, { align: 'center' });
+          doc.text(amount, 175, y + 7, { align: 'center' });
+        }
+      }
+
+      // TOTAL PAID row
+      const totalY = tableStartY + 10 + (4 * rowHeight);
+      doc.setFillColor(0, 0, 0);
+      doc.rect(14, totalY, 141, 12, 'F');
+      doc.setFillColor(29, 62, 137);
+      doc.rect(155, totalY, 41, 12, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.text("TOTAL PAID", 18, totalY + 8);
+      
+      doc.text(amount, 175, totalY + 8, { align: 'center' });
+
+      // CUSTOMER DECLARATION
+      const decY = totalY + 20;
+      doc.setDrawColor(29, 62, 137);
+      doc.setLineWidth(0.3);
+      doc.rect(14, decY, 182, 45);
+
+      doc.setTextColor(29, 62, 137);
+      doc.setFont("helvetica", "bold");
+      doc.text("CUSTOMER DECLARATION", 18, decY + 8);
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      const decText1 = "Combo (Display, Touch, Screen) replacement, battery replacement, software installation, water damage repair, motherboard repairs,\nand other repair work may sometimes result in issues such as device becoming dead, data loss, camera malfunction, Bluetooth, Wi-Fi,\ncharging, speaker, microphone, etc. not functioning properly due to various technical reasons.";
+      doc.text(decText1, 18, decY + 14);
+
+      doc.text("I understand this and am handing over my device for repair at my own responsibility.", 18, decY + 25);
+      
+      const decText2 = "If, after the repair, the device develops any of the above-mentioned issues within 30 days, I understand that the service center's\nresponsibility is limited only to repairing the reported complaint.";
+      doc.text(decText2, 18, decY + 31);
+
+      doc.text("I also agree that if any other faults occur, I will not hold the service center responsible.", 18, decY + 39);
+
+      // Checkbox
+      doc.setDrawColor(29, 62, 137);
+      doc.rect(18, decY + 41.5, 3, 3);
+      doc.setTextColor(29, 62, 137);
+      doc.text("✓", 18.5, decY + 44); 
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text("I have read and understood the above terms and conditions and agree to them.", 23, decY + 44);
+
+      // Footers (Bottom of page)
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      doc.setFillColor(0, 0, 0);
+      doc.rect(14, pageHeight - 35, 182, 15, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      if (phoneNoBottom) doc.text(phoneNoBottom, 18, pageHeight - 27);
+      
+      doc.text(`Email: ${email}`, 70, pageHeight - 27);
+      
+      const addrLines = doc.splitTextToSize(addressBottom, 70);
+      doc.text(addrLines, 120, pageHeight - 31);
+
+      doc.setFillColor(29, 62, 137);
+      doc.rect(14, pageHeight - 20, 182, 10, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("iNex - Premium Mobile & Laptop Service Center", 105, pageHeight - 13, { align: 'center' });
+
+      doc.save(`INEX_Invoice_${jobCard}.pdf`);
       setOpenMenuId(null);
+    };
+
+    img.onload = () => {
+      doc.addImage(img, 'PNG', 14, 10, 50, 25);
+      drawContent();
+    };
+    img.onerror = () => {
+      drawContent();
     };
   };
 
@@ -549,7 +705,7 @@ const DayBook = () => {
                             onClick={() => generatePDF(p)}
                             style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid #f1f3f5', fontSize: '0.85rem' }}
                           >
-                            <Download size={14} /> Download PDF
+                            <Download size={14} /> Download Invoice
                           </button>
                           <button 
                             onClick={() => handleDelete(p)}
