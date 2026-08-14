@@ -269,6 +269,9 @@ const DayBook = () => {
 
       // Address Top
       doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("P R E M I U M   S E R V I C E   C E N T E R", 14, 30);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.text(String(addressTop || ''), 14, 35);
@@ -384,24 +387,36 @@ const DayBook = () => {
       doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
-      const decText1 = "Combo (Display, Touch, Screen) replacement, battery replacement, software installation, water damage repair, motherboard repairs,\nand other repair work may sometimes result in issues such as device becoming dead, data loss, camera malfunction, Bluetooth, Wi-Fi,\ncharging, speaker, microphone, etc. not functioning properly due to various technical reasons.";
-      doc.text(decText1, 18, decY + 14);
 
-      doc.text("I understand this and am handing over my device for repair at my own responsibility.", 18, decY + 25);
+      // Draw bullets
+      doc.setFillColor(0, 0, 0);
+      doc.circle(18.5, decY + 12.5, 0.7, 'F');
+      doc.circle(18.5, decY + 23.5, 0.7, 'F');
+      doc.circle(18.5, decY + 29.5, 0.7, 'F');
+      doc.circle(18.5, decY + 37.5, 0.7, 'F');
+
+      const decText1 = "Combo (Display, Touch, Screen) replacement, battery replacement, software installation, water damage repair, motherboard repairs,\nand other repair work may sometimes result in issues such as device becoming dead, data loss, camera malfunction, Bluetooth, Wi-Fi,\ncharging, speaker, microphone, etc. not functioning properly due to various technical reasons.";
+      doc.text(decText1, 22, decY + 14);
+
+      doc.text("I understand this and am handing over my device for repair at my own responsibility.", 22, decY + 25);
       
       const decText2 = "If, after the repair, the device develops any of the above-mentioned issues within 30 days, I understand that the service center's\nresponsibility is limited only to repairing the reported complaint.";
-      doc.text(decText2, 18, decY + 31);
+      doc.text(decText2, 22, decY + 31);
 
-      doc.text("I also agree that if any other faults occur, I will not hold the service center responsible.", 18, decY + 39);
+      doc.text("I also agree that if any other faults occur, I will not hold the service center responsible.", 22, decY + 39);
 
       // Checkbox
       doc.setDrawColor(29, 62, 137);
-      doc.rect(18, decY + 41.5, 3, 3);
-      doc.setTextColor(29, 62, 137);
-      doc.text("✓", 18.5, decY + 44); 
+      doc.setLineWidth(0.3);
+      doc.rect(21.5, decY + 41.5, 3, 3);
+      
+      // Draw checkmark using lines (handles lack of ✓ in default font)
+      doc.line(22, decY + 43, 22.8, decY + 44);
+      doc.line(22.8, decY + 44, 24.5, decY + 41.5);
+      
       doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "bold");
-      doc.text("I have read and understood the above terms and conditions and agree to them.", 23, decY + 44);
+      doc.text("I have read and understood the above terms and conditions and agree to them.", 26, decY + 44);
 
       // Footers (Bottom of page)
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -412,8 +427,15 @@ const DayBook = () => {
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
+      // Draw email envelope icon
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.3);
+      doc.rect(18, pageHeight - 29.5, 4, 3);
+      doc.line(18, pageHeight - 29.5, 20, pageHeight - 28);
+      doc.line(22, pageHeight - 29.5, 20, pageHeight - 28);
+
       // Add email text
-      doc.text(`Email: ${email}`, 18, pageHeight - 27);
+      doc.text(email, 24, pageHeight - 27);
       
       // Right align the address
       doc.text(String(addressBottom || ''), 196 - 4, pageHeight - 27, { align: 'right' });
