@@ -28,7 +28,11 @@ const AdminDashboard = () => {
         let pendingRepairs = 0;
 
         let pendingList = [];
-        let branchRevenues = {};
+        let branchRevenues = {
+          'INEX Thodupuzha': 0,
+          'INEX Kaloor': 0,
+          'INEX Perumbavoor': 0
+        };
 
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();

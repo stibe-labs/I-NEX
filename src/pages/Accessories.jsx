@@ -121,7 +121,7 @@ const Accessories = () => {
               onChange={e => setFilterBranch(e.target.value)}
             >
               <option value="All">All Branches</option>
-              {Array.from(new Set(items.map(item => item.created_by))).filter(Boolean).map((branch, i) => (
+              {Array.from(new Set(['INEX Thodupuzha', 'INEX Kaloor', 'INEX Perumbavoor', ...items.map(item => item.created_by)])).filter(Boolean).map((branch, i) => (
                 <option key={i} value={branch}>{branch}</option>
               ))}
             </select>

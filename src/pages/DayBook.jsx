@@ -545,7 +545,7 @@ const DayBook = () => {
                   required
                 >
                   <option value="">Select Branch</option>
-                  {Array.from(new Set(projects.map(p => p.company))).filter(Boolean).map((branch, i) => (
+                  {Array.from(new Set(['INEX Thodupuzha', 'INEX Kaloor', 'INEX Perumbavoor', ...projects.map(p => p.company)])).filter(Boolean).map((branch, i) => (
                     <option key={i} value={branch}>{branch}</option>
                   ))}
                 </select>
@@ -616,7 +616,7 @@ const DayBook = () => {
               onChange={e => setFilterBranch(e.target.value)}
             >
               <option value="All">All Branches</option>
-              {Array.from(new Set(projects.map(p => p.company))).filter(Boolean).map((branch, i) => (
+              {Array.from(new Set(['INEX Thodupuzha', 'INEX Kaloor', 'INEX Perumbavoor', ...projects.map(p => p.company)])).filter(Boolean).map((branch, i) => (
                 <option key={i} value={branch}>{branch}</option>
               ))}
             </select>
