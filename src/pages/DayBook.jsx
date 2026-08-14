@@ -439,7 +439,7 @@ const DayBook = () => {
     };
 
     img.onload = () => {
-      doc.addImage(img, 'PNG', 14, 10, 50, 25);
+      doc.addImage(img, 'PNG', 14, 10, 45, 15);
       drawContent();
     };
     img.onerror = () => {
