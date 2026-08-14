@@ -418,11 +418,11 @@ const DayBook = () => {
       doc.setFont("helvetica", "bold");
       doc.text("I have read and understood the above terms and conditions and agree to them.", 26, decY + 44);
 
-      // Footers (Bottom of page)
-      const pageHeight = doc.internal.pageSize.getHeight();
+      // Footers (Under Customer Declaration)
+      const footerY = decY + 55;
       
       doc.setFillColor(0, 0, 0);
-      doc.rect(14, pageHeight - 35, 182, 15, 'F');
+      doc.rect(14, footerY, 182, 15, 'F');
       
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "normal");
@@ -430,22 +430,22 @@ const DayBook = () => {
       // Draw email envelope icon
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.3);
-      doc.rect(18, pageHeight - 29.5, 4, 3);
-      doc.line(18, pageHeight - 29.5, 20, pageHeight - 28);
-      doc.line(22, pageHeight - 29.5, 20, pageHeight - 28);
+      doc.rect(18, footerY + 5.5, 4, 3);
+      doc.line(18, footerY + 5.5, 20, footerY + 7);
+      doc.line(22, footerY + 5.5, 20, footerY + 7);
 
       // Add email text
-      doc.text(email, 24, pageHeight - 27);
+      doc.text(email, 24, footerY + 8);
       
       // Right align the address
-      doc.text(String(addressBottom || ''), 196 - 4, pageHeight - 27, { align: 'right' });
+      doc.text(String(addressBottom || ''), 196 - 4, footerY + 8, { align: 'right' });
 
       doc.setFillColor(29, 62, 137);
-      doc.rect(14, pageHeight - 20, 182, 10, 'F');
+      doc.rect(14, footerY + 15, 182, 10, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
-      doc.text("iNex - Premium Mobile & Laptop Service Center", 105, pageHeight - 13, { align: 'center' });
+      doc.text("iNex - Premium Mobile & Laptop Service Center", 105, footerY + 22, { align: 'center' });
 
       doc.save(`INEX_Invoice_${jobCard}.pdf`);
       setOpenMenuId(null);
