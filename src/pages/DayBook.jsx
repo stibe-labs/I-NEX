@@ -33,7 +33,7 @@ const DayBook = () => {
   const [formData, setFormData] = useState({
     sl_no: '', customer_name: '', job_card: '', model_name: '',
     consumption: '', warranty: '', cash: '', bank: '', credit: '',
-    cost: '', profit: '', branch: ''
+    cost: '', profit: '', branch: '', create_additional_invoice: false
   });
 
   // Search State
@@ -116,7 +116,7 @@ const DayBook = () => {
         // Only create invoice if there is some amount
         if (totalAmount > 0 && formData.customer_name) {
           const invoiceExists = await checkSalesInvoiceExists(savedProjectId);
-          if (invoiceExists) {
+          if (invoiceExists && !formData.create_additional_invoice) {
             console.log("Sales Invoice already exists for this project, skipping auto-creation.");
           } else {
             const custName = await ensureCustomer(formData.customer_name);
@@ -151,7 +151,7 @@ const DayBook = () => {
       setFormData({
         sl_no: '', customer_name: '', job_card: '', model_name: '',
         consumption: '', warranty: '', cash: '', bank: '', credit: '',
-        cost: '', profit: '', branch: ''
+        cost: '', profit: '', branch: '', create_additional_invoice: false
       });
     } catch (e) {
       toast.error(e.message || (editProjectId ? "Failed to update in Frappe." : "Failed to save to Frappe."));
@@ -177,7 +177,8 @@ const DayBook = () => {
       credit: extractNote(project.notes, 'Credit'),
       cost: extractNote(project.notes, 'Cost') || project.total_costing_amount || '',
       profit: extractNote(project.notes, 'Profit') || project.total_billed_amount || '',
-      branch: project.company || ''
+      branch: project.company || '',
+      create_additional_invoice: false
     });
     setEditProjectId(project.name);
     setIsAdding(true);
@@ -496,7 +497,7 @@ const DayBook = () => {
     setFormData({
       customer_name: '', job_card: '', model_name: '',
       consumption: '', warranty: '', cash: '', bank: '', credit: '',
-      cost: '', profit: '', branch: ''
+      cost: '', profit: '', branch: '', create_additional_invoice: false
     });
   };
 
@@ -605,10 +606,21 @@ const DayBook = () => {
               <input type="text" className="input-field" value={formData.profit} onChange={e => handleInputChange('profit', e.target.value)} />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
               <Save size={18} /> {isSaving ? 'Saving...' : (editProjectId ? 'Update Entry' : 'Save to Frappe')}
             </button>
+            {editProjectId && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--primary-color)', fontWeight: 500 }}>
+                <input 
+                  type="checkbox" 
+                  checked={formData.create_additional_invoice || false}
+                  onChange={e => handleInputChange('create_additional_invoice', e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }}
+                />
+                Create Additional Sales Invoice
+              </label>
+            )}
             <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); setEditProjectId(null); handleClear(); }}>
               <X size={18} /> Cancel
             </button>
