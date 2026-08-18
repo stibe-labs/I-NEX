@@ -502,7 +502,7 @@ h1 {
 }
 
 .main-content {
-  padding: 1rem 2rem 2rem 2rem;
+  padding: 1rem 1.5rem 2rem 1.5rem;
   flex: 1;
 }
 
@@ -510,21 +510,37 @@ h1 {
   display: none;
 }
 
+.nav-brand-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.portal-badge {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
 @media (min-width: 769px) {
   .app-layout {
     flex-direction: row;
   }
   
+  /* Shortened / more compact sidebar */
   .navbar {
-    width: 250px;
-    min-width: 250px;
+    width: 205px;
+    min-width: 205px;
     height: 100vh;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
     border-right: 1px solid rgba(0, 0, 0, 0.08);
     border-bottom: none;
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 0.75rem;
     position: sticky;
     top: 0;
     backdrop-filter: none;
@@ -533,11 +549,18 @@ h1 {
   }
   
   .nav-brand {
-    margin-bottom: 2rem;
-    padding: 0 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0 0.4rem;
     display: flex;
     align-items: center;
     justify-content: flex-start;
+    width: 100%;
+  }
+
+  .nav-brand-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
     width: 100%;
   }
   
@@ -545,17 +568,17 @@ h1 {
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 0.4rem;
+    gap: 0.3rem;
   }
   
   .nav-link {
     width: 100%;
-    padding: 0.65rem 0.85rem;
+    padding: 0.55rem 0.7rem;
     border-radius: var(--border-radius);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
   
   .nav-link:hover, .nav-link.active {
@@ -572,7 +595,7 @@ h1 {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    padding: 1.25rem 2rem 0.25rem 2rem;
+    padding: 1rem 1.5rem 0.25rem 1.5rem;
   }
 
   /* Compact table lists on desktop */

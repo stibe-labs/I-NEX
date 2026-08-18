@@ -64,9 +64,9 @@ const Layout = ({ children }) => {
     <div className="app-layout">
       <nav className="navbar">
         <div className="nav-brand">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <img src="/INEX final logo-04.png" alt="I-NEX Logo" style={{ height: '32px' }} />
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: '0.5rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '10px' }}>
+          <div className="nav-brand-container">
+            <img src="/INEX final logo-04.png" alt="I-NEX Logo" style={{ height: '28px', objectFit: 'contain' }} />
+            <span className="portal-badge">
               {user?.role === 'admin' ? 'Admin Portal' : 'Branch Portal'}
             </span>
           </div>
