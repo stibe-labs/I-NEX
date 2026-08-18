@@ -501,20 +501,30 @@ h1 {
   min-width: 0;
 }
 
+.main-content {
+  padding: 1rem 2rem 2rem 2rem;
+  flex: 1;
+}
+
+.desktop-top-header {
+  display: none;
+}
+
 @media (min-width: 769px) {
   .app-layout {
     flex-direction: row;
   }
   
   .navbar {
-    width: 260px;
+    width: 250px;
+    min-width: 250px;
     height: 100vh;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: flex-start;
-    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
     border-bottom: none;
-    padding: 2rem 1.5rem;
+    padding: 1.5rem 1rem;
     position: sticky;
     top: 0;
     backdrop-filter: none;
@@ -524,30 +534,58 @@ h1 {
   
   .nav-brand {
     margin-bottom: 2rem;
+    padding: 0 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
     width: 100%;
   }
   
   .nav-links {
+    display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
   
   .nav-link {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.85rem;
     border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
   }
   
   .nav-link:hover, .nav-link.active {
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--primary-color);
+    font-weight: 600;
   }
-  
-  .logout-btn {
-    position: fixed;
-    top: 1.5rem;
-    right: 2rem;
-    width: auto !important;
-    z-index: 1000;
+
+  .mobile-logout-btn {
+    display: none !important;
+  }
+
+  .desktop-top-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 1.25rem 2rem 0.25rem 2rem;
+  }
+
+  /* Compact table lists on desktop */
+  .data-table th,
+  .data-table td {
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.825rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .data-table th {
+    font-size: 0.725rem !important;
+    padding: 0.4rem 0.65rem !important;
+    font-weight: 600 !important;
   }
 }

@@ -98,13 +98,18 @@ const Layout = ({ children }) => {
               <Settings size={18} /> Team
             </Link>
           )}
-          <button onClick={() => { closeMenu(); logout(); }} className="nav-link logout-btn" style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button onClick={() => { closeMenu(); logout(); }} className="nav-link logout-btn mobile-logout-btn" style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <LogOut size={18} /> Logout
           </button>
         </div>
       </nav>
       <div className="content-wrapper">
-        <main style={{ padding: '2rem', flex: 1 }}>
+        <header className="desktop-top-header">
+          <button onClick={logout} className="logout-btn" style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <LogOut size={16} /> Logout
+          </button>
+        </header>
+        <main className="main-content">
           {children}
         </main>
         <footer className="app-footer powered-by-label">
