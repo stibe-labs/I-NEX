@@ -12,7 +12,7 @@ import {
   deletePurchaseReceipt,
   deleteSalesInvoice
 } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Edit, Trash2, Smartphone } from 'lucide-react';
+import { Plus, Save, X, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -35,7 +35,7 @@ const PhonePurchaseSale = () => {
   // Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    branch_project: '', // Stores project name (which corresponds to branch)
+    branch_project: '', // Stores project name (e.g. PROJ-0792)
     party_name: '', // Supplier for Purchases, Customer for Sales
     model: '',
     imei: '',
@@ -78,14 +78,27 @@ const PhonePurchaseSale = () => {
     loadData();
   }, []);
 
+  // Filter projects specifically created for Phone Purchase and Sales
+  const phoneProjects = projects.filter(p => 
+    /phone purchase/i.test(p.project_name) ||
+    /PROJ-0792|PROJ-0793|PROJ-0794/.test(p.name)
+  );
+
+  // Available projects for the current user to select in dropdown
+  const availableProjects = phoneProjects.filter(p => {
+    if (user?.role === 'admin') return true;
+    return p.company === user?.name || (p.project_name && p.project_name.toLowerCase().includes((user?.name || '').toLowerCase().replace('inex ', '')));
+  });
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleClear = () => {
+    const userBranchProj = phoneProjects.find(p => p.company === user?.name || (p.project_name && p.project_name.toLowerCase().includes((user?.name || '').toLowerCase().replace('inex ', ''))));
     setFormData({
       date: new Date().toISOString().split('T')[0],
-      branch_project: user?.role === 'admin' ? '' : projects.find(p => p.company === user?.name)?.name || '',
+      branch_project: user?.role === 'admin' ? '' : (userBranchProj?.name || ''),
       party_name: '',
       model: '',
       imei: '',
@@ -96,7 +109,7 @@ const PhonePurchaseSale = () => {
 
   const handleSave = async () => {
     if (!formData.branch_project) {
-      toast.error("Branch/Project is required");
+      toast.error("Branch (Project) is required");
       return;
     }
     if (!formData.party_name) {
@@ -111,14 +124,12 @@ const PhonePurchaseSale = () => {
     setIsSaving(true);
     try {
       const project = projects.find(p => p.name === formData.branch_project);
-      if (!project) throw new Error("Invalid Project selected");
+      if (!project) throw new Error("Invalid Branch Project selected");
 
-      // Extract Company for the record
       const company = project.company || 'INEX';
-      
       const itemCode = await ensureItem(formData.model, `IMEI: ${formData.imei}`);
       const rate = parseFloat(formData.amount) || 0;
-      const remarks = `IMEI Number: ${formData.imei}`;
+      const remarks = `Model: ${formData.model}\nIMEI Number: ${formData.imei}`;
 
       if (activeTab === 'purchases') {
         const supplierName = await ensureSupplier(formData.party_name);
@@ -138,7 +149,6 @@ const PhonePurchaseSale = () => {
         };
 
         if (editId) {
-          // Edit logic (if supported by backend, currently only partially implemented)
           await updatePurchaseReceipt(editId, invoiceData);
           toast.success("Purchase Updated!");
         } else {
@@ -162,7 +172,6 @@ const PhonePurchaseSale = () => {
           remarks: remarks
         };
 
-        // Note: No generic update endpoint for Sales Invoice implemented yet, so we assume only create for now.
         await createSalesInvoice(invoiceData);
         toast.success("Sale Saved!");
       }
@@ -196,43 +205,41 @@ const PhonePurchaseSale = () => {
 
   const extractIMEI = (remarks) => {
     if (!remarks) return '-';
-    const match = remarks.match(/IMEI Number:\s*(.*)/i);
+    const match = remarks.match(/IMEI Number:\s*([^\n\r]+)/i);
     return match ? match[1].trim() : '-';
   };
 
-  const extractModel = (itemsArrayStr) => {
-    // If we have items data. For now, since we didn't fetch child table, 
-    // it's tricky to get Model. Wait, we don't have items array in summary.
-    // The user's pdf had 'Model'. We need to make sure we can display it. 
-    // For now, let's extract it from 'Remarks' if we save it there, or just show from item code if possible.
-    return '-'; // Will fix below
-  };
-
-  // Enhance remarks to include Model as well so we don't need child table lookup
-  const getRemarksWithModel = (imei, model) => `Model: ${model}\nIMEI Number: ${imei}`;
   const getModelFromRemarks = (remarks) => {
     if (!remarks) return '-';
-    const match = remarks.match(/Model:\s*(.*)/i);
+    const match = remarks.match(/Model:\s*([^\n\r]+)/i);
     return match ? match[1].trim() : '-';
   };
 
-  // Let's patch handleSave to include Model in remarks
-  // (Done in the actual save function block but I need to make sure I use this format)
-
-  // We filter by role and search term
+  // Filter records so that ONLY Phone Purchase & Sales records are shown
   const filterRecords = (records) => {
+    const phoneProjectNames = phoneProjects.map(p => p.name);
     return records.filter(record => {
-      // Role filtering
+      // Must be linked to a phone purchase & sales project or have IMEI remarks
+      const isPhoneRecord = phoneProjectNames.includes(record.project) || 
+                            (record.remarks && /IMEI Number:/i.test(record.remarks));
+      if (!isPhoneRecord) return false;
+
+      const recordProject = projects.find(p => p.name === record.project);
+
+      // Role filtering for branch users
       if (user?.role === 'branch') {
-        // Find if this record belongs to a project assigned to this branch
-        const recordProject = projects.find(p => p.name === record.project);
-        if (!recordProject || recordProject.company !== user?.name) return false;
+        const branchMatch = recordProject 
+          ? (recordProject.company === user?.name || record.company === user?.name) 
+          : record.company === user?.name;
+        if (!branchMatch) return false;
       }
       
       // Admin branch filter
       if (user?.role === 'admin' && filterBranch !== 'All') {
-        const recordProject = projects.find(p => p.name === record.project);
-        if (!recordProject || recordProject.company !== filterBranch) return false;
+        const branchMatch = recordProject 
+          ? (recordProject.company === filterBranch || record.company === filterBranch) 
+          : record.company === filterBranch;
+        if (!branchMatch) return false;
       }
 
       // Search term
@@ -246,97 +253,13 @@ const PhonePurchaseSale = () => {
   };
 
   const displayRecords = filterRecords(activeTab === 'purchases' ? purchases : sales);
-
-  // We need to patch the handleSave's remarks to include model for easier parsing later:
-  const getPatchedRemarks = () => `Model: ${formData.model}\nIMEI Number: ${formData.imei}`;
-
-  const _handleSavePatched = async () => {
-    if (!formData.branch_project) {
-      toast.error("Branch/Project is required");
-      return;
-    }
-    if (!formData.party_name) {
-      toast.error(activeTab === 'purchases' ? "Supplier Name is required" : "Customer Name is required");
-      return;
-    }
-    if (!formData.model) {
-      toast.error("Model is required");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const project = projects.find(p => p.name === formData.branch_project);
-      if (!project) throw new Error("Invalid Project selected");
-
-      const company = project.company || 'INEX';
-      const itemCode = await ensureItem(formData.model, `IMEI: ${formData.imei}`);
-      const rate = parseFloat(formData.amount) || 0;
-      const patchedRemarks = getPatchedRemarks();
-
-      if (activeTab === 'purchases') {
-        const supplierName = await ensureSupplier(formData.party_name);
-        const invoiceData = {
-          supplier: supplierName,
-          project: project.name,
-          company: company,
-          posting_date: formData.date,
-          items: [{
-            item_code: itemCode,
-            qty: 1,
-            rate: rate,
-            description: `Model: ${formData.model}, IMEI: ${formData.imei}`,
-            project: project.name
-          }],
-          remarks: patchedRemarks
-        };
-
-        await createPurchaseReceipt(invoiceData);
-        toast.success("Purchase Saved!");
-      } else {
-        const customerName = await ensureCustomer(formData.party_name);
-        const invoiceData = {
-          customer: customerName,
-          project: project.name,
-          company: company,
-          posting_date: formData.date,
-          items: [{
-            item_code: itemCode,
-            qty: 1,
-            rate: rate,
-            description: `Model: ${formData.model}, IMEI: ${formData.imei}`,
-            project: project.name
-          }],
-          remarks: patchedRemarks
-        };
-
-        await createSalesInvoice(invoiceData);
-        toast.success("Sale Saved!");
-      }
-
-      await loadData();
-      setIsAdding(false);
-      handleClear();
-    } catch (e) {
-      toast.error(e.message || `Failed to save ${activeTab.slice(0, -1)}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Available projects to select based on role
-  const availableProjects = projects.filter(p => {
-    if (user?.role === 'admin') return true;
-    return p.company === user?.name;
-  });
+  const availableBranchFilters = Array.from(new Set(phoneProjects.map(p => p.company))).filter(Boolean);
 
   return (
     <div>
+      {/* Page Header without the phone icon as requested */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Smartphone size={24} color="var(--primary-color)" />
-          <h1>Phone Purchase & Sale</h1>
-        </div>
+        <h1>Phone Purchase & Sale</h1>
         {!isAdding && (
           <button className="btn btn-primary" onClick={() => { handleClear(); setIsAdding(true); }}>
             <Plus size={18} /> New Entry
@@ -344,6 +267,7 @@ const PhonePurchaseSale = () => {
         )}
       </div>
 
+      {/* Tabs */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.5rem' }}>
         <button 
           className={`btn ${activeTab === 'purchases' ? 'btn-primary' : ''}`}
@@ -361,6 +285,7 @@ const PhonePurchaseSale = () => {
         </button>
       </div>
 
+      {/* New Entry Form */}
       {isAdding && (
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
           <h3 style={{ marginBottom: '1.5rem', textTransform: 'capitalize' }}>New {activeTab.slice(0, -1)} Entry</h3>
@@ -388,28 +313,55 @@ const PhonePurchaseSale = () => {
 
             <div className="input-group">
               <label>{activeTab === 'purchases' ? 'Supplier Name' : 'Customer Name'}</label>
-              <input type="text" className="input-field" value={formData.party_name} onChange={e => handleInputChange('party_name', e.target.value)} required />
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder={activeTab === 'purchases' ? 'Enter Supplier Name' : 'Enter Customer Name'}
+                value={formData.party_name} 
+                onChange={e => handleInputChange('party_name', e.target.value)} 
+                required 
+              />
             </div>
 
             <div className="input-group">
               <label>Model</label>
-              <input type="text" className="input-field" value={formData.model} onChange={e => handleInputChange('model', e.target.value)} required />
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="e.g. iPhone 15 Pro, Samsung S24"
+                value={formData.model} 
+                onChange={e => handleInputChange('model', e.target.value)} 
+                required 
+              />
             </div>
 
             <div className="input-group">
               <label>IMEI Number</label>
-              <input type="text" className="input-field" value={formData.imei} onChange={e => handleInputChange('imei', e.target.value)} />
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="15-digit IMEI"
+                value={formData.imei} 
+                onChange={e => handleInputChange('imei', e.target.value)} 
+              />
             </div>
 
             <div className="input-group">
               <label>Amount</label>
-              <input type="number" className="input-field" value={formData.amount} onChange={e => handleInputChange('amount', e.target.value)} required />
+              <input 
+                type="number" 
+                className="input-field" 
+                placeholder="0.00"
+                value={formData.amount} 
+                onChange={e => handleInputChange('amount', e.target.value)} 
+                required 
+              />
             </div>
 
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-            <button className="btn btn-primary" onClick={_handleSavePatched} disabled={isSaving}>
+            <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
               <Save size={18} /> {isSaving ? 'Saving...' : 'Save Entry'}
             </button>
             <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); handleClear(); }}>
@@ -419,17 +371,18 @@ const PhonePurchaseSale = () => {
         </div>
       )}
 
+      {/* Table Container */}
       <div className="table-container">
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           {user?.role === 'admin' && (
             <select 
               className="input-field" 
-              style={{ width: 'auto', minWidth: '150px' }}
+              style={{ width: 'auto', minWidth: '160px' }}
               value={filterBranch}
               onChange={e => setFilterBranch(e.target.value)}
             >
               <option value="All">All Branches</option>
-              {Array.from(new Set(projects.map(p => p.company))).filter(Boolean).map((branch, i) => (
+              {availableBranchFilters.map((branch, i) => (
                 <option key={i} value={branch}>{branch}</option>
               ))}
             </select>
@@ -514,7 +467,7 @@ const PhonePurchaseSale = () => {
               })}
               {displayRecords.length === 0 && (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No phone {activeTab} records found. Click <strong>+ New Entry</strong> to add one.</td>
                 </tr>
               )}
             </tbody>
