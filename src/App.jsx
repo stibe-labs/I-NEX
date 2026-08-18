@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign, ShoppingCart } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BranchDashboard from './pages/BranchDashboard';
@@ -56,46 +56,80 @@ const Layout = ({ children }) => {
   const { logout, user } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('inex_sidebar_collapsed') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('inex_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const isActive = (path) => location.pathname === path ? 'active' : '';
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div className="app-layout">
-      <nav className="navbar">
+    <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <nav className={`navbar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        {/* Toggle Arrow Button on sidebar border */}
+        <button 
+          className="sidebar-toggle-btn" 
+          onClick={toggleSidebar}
+          title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          aria-label={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
         <div className="nav-brand">
           <div className="nav-brand-container">
-            <img src="/INEX final logo-04.png" alt="I-NEX Logo" style={{ height: '28px', objectFit: 'contain' }} />
-            <span className="portal-badge">
-              {user?.role === 'admin' ? 'Admin Portal' : 'Branch Portal'}
-            </span>
+            <img 
+              src={isSidebarCollapsed ? "/hna icon.png" : "/INEX final logo-04.png"} 
+              alt="I-NEX Logo" 
+              style={{ height: '28px', objectFit: 'contain' }} 
+            />
+            {!isSidebarCollapsed && (
+              <span className="portal-badge">
+                {user?.role === 'admin' ? 'Admin Portal' : 'Branch Portal'}
+              </span>
+            )}
           </div>
           <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
         <div className={`nav-links ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-          <Link to="/" onClick={closeMenu} className={`nav-link ${isActive('/')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <LayoutDashboard size={18} /> Dashboard
+          <Link to="/" onClick={closeMenu} className={`nav-link ${isActive('/')}`} title="Dashboard">
+            <LayoutDashboard size={18} /> 
+            <span className="nav-link-text">Dashboard</span>
           </Link>
-          <Link to="/customers" onClick={closeMenu} className={`nav-link ${isActive('/customers')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={18} /> Customers
+          <Link to="/customers" onClick={closeMenu} className={`nav-link ${isActive('/customers')}`} title="Customers">
+            <Users size={18} /> 
+            <span className="nav-link-text">Customers</span>
           </Link>
-          <Link to="/daybook" onClick={closeMenu} className={`nav-link ${isActive('/daybook')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BookOpen size={18} /> Day Book
+          <Link to="/daybook" onClick={closeMenu} className={`nav-link ${isActive('/daybook')}`} title="Day Book">
+            <BookOpen size={18} /> 
+            <span className="nav-link-text">Day Book</span>
           </Link>
-          <Link to="/accessories" onClick={closeMenu} className={`nav-link ${isActive('/accessories')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Package size={18} /> Accessories
+          <Link to="/accessories" onClick={closeMenu} className={`nav-link ${isActive('/accessories')}`} title="Accessories">
+            <Package size={18} /> 
+            <span className="nav-link-text">Accessories</span>
           </Link>
-          <Link to="/expenses" onClick={closeMenu} className={`nav-link ${isActive('/expenses')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <DollarSign size={18} /> Expenses
+          <Link to="/expenses" onClick={closeMenu} className={`nav-link ${isActive('/expenses')}`} title="Expenses">
+            <DollarSign size={18} /> 
+            <span className="nav-link-text">Expenses</span>
           </Link>
-          <Link to="/purchase" onClick={closeMenu} className={`nav-link ${isActive('/purchase')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ShoppingCart size={18} /> Purchase
+          <Link to="/purchase" onClick={closeMenu} className={`nav-link ${isActive('/purchase')}`} title="Purchase">
+            <ShoppingCart size={18} /> 
+            <span className="nav-link-text">Purchase</span>
           </Link>
           {user?.role === 'admin' && (
-            <Link to="/team" onClick={closeMenu} className={`nav-link ${isActive('/team')}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Settings size={18} /> Team
+            <Link to="/team" onClick={closeMenu} className={`nav-link ${isActive('/team')}`} title="Team">
+              <Settings size={18} /> 
+              <span className="nav-link-text">Team</span>
             </Link>
           )}
           <button onClick={() => { closeMenu(); logout(); }} className="nav-link logout-btn mobile-logout-btn" style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -525,15 +525,20 @@ h1 {
   white-space: nowrap;
 }
 
+/* Sidebar Toggle Arrow Button (Hidden on Mobile) */
+.sidebar-toggle-btn {
+  display: none;
+}
+
 @media (min-width: 769px) {
   .app-layout {
     flex-direction: row;
   }
   
-  /* Shortened / more compact sidebar */
+  /* Sidebar styles */
   .navbar {
-    width: 205px;
-    min-width: 205px;
+    width: 210px;
+    min-width: 210px;
     height: 100vh;
     flex-direction: column;
     align-items: stretch;
@@ -546,6 +551,63 @@ h1 {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: #ffffff;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Toggle Button placed on the sidebar right border */
+  .sidebar-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 20px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    color: var(--text-primary);
+    cursor: pointer;
+    z-index: 200;
+    transition: all 0.2s ease;
+    padding: 0;
+  }
+
+  .sidebar-toggle-btn:hover {
+    background: #f4f4f5;
+    border-color: rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+  }
+
+  /* Collapsed Sidebar (Shortened) */
+  .navbar.collapsed {
+    width: 68px;
+    min-width: 68px;
+    padding: 1.25rem 0.4rem;
+    align-items: center;
+  }
+
+  .navbar.collapsed .nav-brand {
+    justify-content: center;
+    padding: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .navbar.collapsed .nav-brand-container {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .navbar.collapsed .nav-link-text {
+    display: none;
+  }
+
+  .navbar.collapsed .nav-link {
+    justify-content: center;
+    padding: 0.65rem 0.4rem;
+    gap: 0;
   }
   
   .nav-brand {
