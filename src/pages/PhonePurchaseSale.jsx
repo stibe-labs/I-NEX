@@ -84,21 +84,26 @@ const PhonePurchaseSale = () => {
     /PROJ-0792|PROJ-0793|PROJ-0794/.test(p.name)
   );
 
-  // Available projects for the current user to select in dropdown
-  const availableProjects = phoneProjects.filter(p => {
-    if (user?.role === 'admin') return true;
-    return p.company === user?.name || (p.project_name && p.project_name.toLowerCase().includes((user?.name || '').toLowerCase().replace('inex ', '')));
-  });
+  // Helper to find branch project for branch portal user
+  const getUserBranchProject = () => {
+    return phoneProjects.find(p => 
+      p.company === user?.name || 
+      (p.project_name && p.project_name.toLowerCase().includes((user?.name || '').toLowerCase().replace('inex ', '')))
+    );
+  };
+
+  // Available projects for admin to select in dropdown
+  const availableProjects = phoneProjects;
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleClear = () => {
-    const userBranchProj = phoneProjects.find(p => p.company === user?.name || (p.project_name && p.project_name.toLowerCase().includes((user?.name || '').toLowerCase().replace('inex ', ''))));
+    const defaultBranchProj = user?.role === 'admin' ? '' : (getUserBranchProject()?.name || '');
     setFormData({
       date: new Date().toISOString().split('T')[0],
-      branch_project: user?.role === 'admin' ? '' : (userBranchProj?.name || ''),
+      branch_project: defaultBranchProj,
       party_name: '',
       model: '',
       imei: '',
@@ -107,9 +112,28 @@ const PhonePurchaseSale = () => {
     setEditId(null);
   };
 
+  const handleOpenAdd = () => {
+    const defaultBranchProj = user?.role === 'admin' ? '' : (getUserBranchProject()?.name || '');
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      branch_project: defaultBranchProj,
+      party_name: '',
+      model: '',
+      imei: '',
+      amount: ''
+    });
+    setEditId(null);
+    setIsAdding(true);
+  };
+
   const handleSave = async () => {
-    if (!formData.branch_project) {
-      toast.error("Branch (Project) is required");
+    let targetProjectId = formData.branch_project;
+    if (!targetProjectId && user?.role !== 'admin') {
+      targetProjectId = getUserBranchProject()?.name;
+    }
+
+    if (!targetProjectId) {
+      toast.error(user?.role === 'admin' ? "Please select a Branch (Project)" : "Branch project not found for your account");
       return;
     }
     if (!formData.party_name) {
@@ -123,10 +147,10 @@ const PhonePurchaseSale = () => {
 
     setIsSaving(true);
     try {
-      const project = projects.find(p => p.name === formData.branch_project);
+      const project = projects.find(p => p.name === targetProjectId);
       if (!project) throw new Error("Invalid Branch Project selected");
 
-      const company = project.company || 'INEX';
+      const company = project.company || (user?.role === 'branch' ? user?.name : 'INEX');
       const itemCode = await ensureItem(formData.model, `IMEI: ${formData.imei}`);
       const rate = parseFloat(formData.amount) || 0;
       const remarks = `Model: ${formData.model}\nIMEI Number: ${formData.imei}`;
@@ -257,11 +281,11 @@ const PhonePurchaseSale = () => {
 
   return (
     <div>
-      {/* Page Header without the phone icon as requested */}
+      {/* Page Header without the phone icon */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Phone Purchase & Sale</h1>
         {!isAdding && (
-          <button className="btn btn-primary" onClick={() => { handleClear(); setIsAdding(true); }}>
+          <button className="btn btn-primary" onClick={handleOpenAdd}>
             <Plus size={18} /> New Entry
           </button>
         )}
@@ -296,20 +320,34 @@ const PhonePurchaseSale = () => {
               <input type="date" className="input-field" value={formData.date} onChange={e => handleInputChange('date', e.target.value)} required />
             </div>
 
-            <div className="input-group">
-              <label>Branch (Project)</label>
-              <select 
-                className="input-field" 
-                value={formData.branch_project} 
-                onChange={e => handleInputChange('branch_project', e.target.value)}
-                required
-              >
-                <option value="">Select Branch Project</option>
-                {availableProjects.map((p, i) => (
-                  <option key={i} value={p.name}>{p.project_name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Admin sees dropdown to pick branch project; Branch user gets default set automatically */}
+            {user?.role === 'admin' ? (
+              <div className="input-group">
+                <label>Branch (Project)</label>
+                <select 
+                  className="input-field" 
+                  value={formData.branch_project} 
+                  onChange={e => handleInputChange('branch_project', e.target.value)}
+                  required
+                >
+                  <option value="">Select Branch Project</option>
+                  {availableProjects.map((p, i) => (
+                    <option key={i} value={p.name}>{p.project_name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="input-group">
+                <label>Branch</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={user?.name || getUserBranchProject()?.project_name || 'My Branch'} 
+                  readOnly 
+                  style={{ background: '#f8f9fa', cursor: 'not-allowed' }} 
+                />
+              </div>
+            )}
 
             <div className="input-group">
               <label>{activeTab === 'purchases' ? 'Supplier Name' : 'Customer Name'}</label>
