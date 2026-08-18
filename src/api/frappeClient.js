@@ -550,3 +550,17 @@ export const fetchPurchaseReceipts = async () => {
     return [];
   }
 };
+
+export const fetchSalesInvoices = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?fields=["name","project","customer","posting_date","grand_total","remarks","company"]&limit=1000`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    const data = await res.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching Sales Invoices", error);
+    return [];
+  }
+};
