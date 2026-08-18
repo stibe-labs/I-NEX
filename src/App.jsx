@@ -61,7 +61,7 @@ const Layout = ({ children }) => {
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-layout">
       <nav className="navbar">
         <div className="nav-brand">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -98,18 +98,20 @@ const Layout = ({ children }) => {
               <Settings size={18} /> Team
             </Link>
           )}
-          <button onClick={() => { closeMenu(); logout(); }} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button onClick={() => { closeMenu(); logout(); }} className="nav-link logout-btn" style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <LogOut size={18} /> Logout
           </button>
         </div>
       </nav>
-      <main style={{ padding: '2rem', flex: 1 }}>
-        {children}
-      </main>
-      <footer className="app-footer powered-by-label">
-        <span>powered by</span>
-        <img src="/stibe-logo.png" alt="STIBE" className="powered-by-logo" />
-      </footer>
+      <div className="content-wrapper">
+        <main style={{ padding: '2rem', flex: 1 }}>
+          {children}
+        </main>
+        <footer className="app-footer powered-by-label">
+          <span>powered by</span>
+          <img src="/stibe-logo.png" alt="STIBE" className="powered-by-logo" />
+        </footer>
+      </div>
     </div>
   );
 };
