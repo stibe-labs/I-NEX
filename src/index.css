@@ -517,6 +517,9 @@ h1 {
     padding: 2rem 1.5rem;
     position: sticky;
     top: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #ffffff;
   }
   
   .nav-brand {
