@@ -513,7 +513,23 @@ const DayBook = () => {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const nextData = { ...prev, [field]: value };
+
+      if (['cash', 'bank', 'credit', 'cost'].includes(field)) {
+        const cash = parseFloat(nextData.cash) || 0;
+        const bank = parseFloat(nextData.bank) || 0;
+        const credit = parseFloat(nextData.credit) || 0;
+        const cost = parseFloat(nextData.cost) || 0;
+        
+        const total = cash + bank + credit;
+        if (total > 0 || cost > 0) {
+          nextData.profit = String(total - cost);
+        }
+      }
+
+      return nextData;
+    });
     
     // Auto-fill logic when typing Code
     if (field === 'job_card' && value.trim().length > 0) {
