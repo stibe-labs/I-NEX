@@ -96,7 +96,23 @@ const PhonePurchaseSale = () => {
   const availableProjects = phoneProjects;
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      
+      if (activeTab === 'sales' && field === 'imei' && value.trim().length > 0) {
+        const matchingPurchase = purchases.find(p => {
+          const pImei = extractIMEI(p.remarks);
+          return pImei && pImei.toLowerCase() === value.trim().toLowerCase();
+        });
+        
+        if (matchingPurchase) {
+          next.model = getModelFromRemarks(matchingPurchase.remarks) || '';
+          next.amount = matchingPurchase.grand_total || '';
+        }
+      }
+      
+      return next;
+    });
   };
 
   const handleClear = () => {
@@ -342,7 +358,7 @@ const PhonePurchaseSale = () => {
                 <input 
                   type="text" 
                   className="input-field" 
-                  value={getUserBranchProject()?.project_name || 'Loading Project...'} 
+                  value={user?.name || 'Loading Branch...'} 
                   readOnly 
                   style={{ background: '#f8f9fa', cursor: 'not-allowed', color: '#666' }} 
                 />
