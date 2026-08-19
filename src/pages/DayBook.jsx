@@ -122,6 +122,9 @@ const DayBook = () => {
             const custName = await ensureCustomer(formData.customer_name);
             const itemCode = await ensureItem(formData.job_card, formData.consumption);
             
+            const phone = existingProject?.custom_phone || extractNote(existingNotes, 'Phone');
+            const imei = existingProject?.custom_imei_number;
+
             await createSalesInvoice({
               customer: custName,
               project: savedProjectId,
@@ -135,7 +138,7 @@ const DayBook = () => {
                   description: `Model: ${formData.model_name || 'N/A'}\nConsumption: ${formData.consumption || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
                 }
               ],
-              remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}`
+              remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}\n\nCustomer Details:\nPhone: ${phone || 'N/A'}\nIMEI: ${imei || 'N/A'}\nComplaint: ${complaint || 'N/A'}\nPasscode: ${passcode || 'N/A'}\nTechnician: ${technician || 'N/A'}\nReceiver: ${receiver || 'N/A'}\nSource: ${source || 'N/A'}\nDelivery: ${delivery || 'N/A'}`
             });
             toast.success("Sales Invoice Created Automatically!");
           }
