@@ -182,6 +182,8 @@ const PhonePurchaseSale = () => {
             item_code: itemCode,
             qty: 1,
             rate: rate,
+            price_list_rate: rate,
+            amount: rate,
             description: `Model: ${formData.model}, IMEI: ${formData.imei}`,
             project: project.name
           }],
@@ -206,6 +208,8 @@ const PhonePurchaseSale = () => {
             item_code: itemCode,
             qty: 1,
             rate: rate,
+            price_list_rate: rate,
+            amount: rate,
             description: `Model: ${formData.model}, IMEI: ${formData.imei}`,
             project: project.name
           }],

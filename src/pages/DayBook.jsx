@@ -134,6 +134,8 @@ const DayBook = () => {
                   item_code: itemCode,
                   qty: 1,
                   rate: totalAmount,
+                  price_list_rate: totalAmount,
+                  amount: totalAmount,
                   project: savedProjectId,
                   description: `Model: ${formData.model_name || 'N/A'}\nConsumption: ${formData.consumption || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
                 }
