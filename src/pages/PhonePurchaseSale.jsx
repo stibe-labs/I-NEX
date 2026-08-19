@@ -80,8 +80,8 @@ const PhonePurchaseSale = () => {
 
   // Filter projects specifically created for Phone Purchase and Sales
   const phoneProjects = projects.filter(p => 
-    /phone purchase/i.test(p.project_name) ||
-    /PROJ-0792|PROJ-0793|PROJ-0794/.test(p.name)
+    (p.project_name && p.project_name.toLowerCase().includes('phone purchase and sales')) ||
+    ['PROJ-0792', 'PROJ-0793', 'PROJ-0794'].includes(p.name)
   );
 
   // Helper to find branch project for branch portal user
@@ -338,13 +338,13 @@ const PhonePurchaseSale = () => {
               </div>
             ) : (
               <div className="input-group">
-                <label>Branch</label>
+                <label>Branch (Project)</label>
                 <input 
                   type="text" 
                   className="input-field" 
-                  value={user?.name || getUserBranchProject()?.project_name || 'My Branch'} 
+                  value={getUserBranchProject()?.project_name || 'Loading Project...'} 
                   readOnly 
-                  style={{ background: '#f8f9fa', cursor: 'not-allowed' }} 
+                  style={{ background: '#f8f9fa', cursor: 'not-allowed', color: '#666' }} 
                 />
               </div>
             )}
