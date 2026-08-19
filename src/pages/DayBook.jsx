@@ -345,7 +345,15 @@ const DayBook = () => {
       const complaint = extractNote(project.notes, 'Complaint') || '-';
       const model = project.custom_model_name || '-';
       const imei = project.custom_imei_number || '-';
-      const amount = extractNote(project.notes, 'Profit') || project.total_billed_amount || '0';
+      const profitStr = extractNote(project.notes, 'Profit');
+      const costStr = extractNote(project.notes, 'Cost');
+      let amountNum = 0;
+      if (profitStr || costStr) {
+        amountNum = (parseFloat(profitStr) || 0) + (parseFloat(costStr) || 0);
+      } else {
+        amountNum = project.total_billed_amount || 0;
+      }
+      const amount = String(amountNum);
 
       const rowHeight = 12;
       for (let i = 0; i < 4; i++) {
