@@ -152,7 +152,7 @@ h1 {
 
 /* Table */
 .table-container {
-  overflow-x: auto;
+  /* Removed overflow-x: auto to allow dropdowns to overflow on desktop */
   border-radius: var(--border-radius);
   background: var(--surface-color);
   border: var(--glass-border);
@@ -414,6 +414,10 @@ h1 {
   
   .data-table th {
     font-size: 0.7rem;
+  }
+  
+  .table-container {
+    overflow-x: auto;
   }
 }
 
