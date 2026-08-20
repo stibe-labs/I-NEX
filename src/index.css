@@ -152,10 +152,12 @@ h1 {
 
 /* Table */
 .table-container {
-  /* Removed overflow-x: auto to allow dropdowns to overflow on desktop */
+  overflow-x: auto;
   border-radius: var(--border-radius);
   background: var(--surface-color);
   border: var(--glass-border);
+  padding-bottom: 120px; /* Prevent dropdown clipping at the bottom */
+  min-height: 350px;
 }
 
 .data-table {
