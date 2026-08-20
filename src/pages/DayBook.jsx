@@ -251,8 +251,8 @@ const DayBook = () => {
     } else {
       // Default
       phoneNoTop = '9993335197';
-      addressTop = 'Premium Mobile & Laptop Service Center';
-      addressBottom = 'Premium Mobile & Laptop Service Center';
+      addressTop = 'Premium Service Center';
+      addressBottom = 'Premium Service Center';
     }
 
     const doc = new jsPDF();
@@ -294,12 +294,23 @@ const DayBook = () => {
       doc.setFont("helvetica", "bold");
       doc.text("INVOICE", 105, 55, { align: 'center' });
 
+      // Get Payment Type
+      const cashAmt = parseFloat(extractNote(project.notes, 'Cash')) || 0;
+      const bankAmt = parseFloat(extractNote(project.notes, 'Bank')) || 0;
+      const creditAmt = parseFloat(extractNote(project.notes, 'Credit')) || 0;
+      let paymentTypeArr = [];
+      if (cashAmt > 0) paymentTypeArr.push('Cash');
+      if (bankAmt > 0) paymentTypeArr.push('Bank');
+      if (creditAmt > 0) paymentTypeArr.push('Credit');
+      const paymentTypeStr = paymentTypeArr.join(', ') || 'N/A';
+
       // Customer Info Box
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.3);
-      doc.rect(14, 70, 182, 16); // Outer box
-      doc.line(14, 78, 196, 78); // Horizontal separator
-      doc.line(100, 70, 100, 86); // Vertical separator
+      doc.rect(14, 70, 182, 24); // Outer box
+      doc.line(14, 78, 196, 78); // Horizontal separator 1
+      doc.line(14, 86, 196, 86); // Horizontal separator 2
+      doc.line(100, 70, 100, 94); // Vertical separator
 
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
@@ -328,8 +339,13 @@ const DayBook = () => {
       doc.setFont("helvetica", "normal");
       doc.text(String(jobCard || ''), 135, 83.5);
 
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment Type :", 18, 91.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(paymentTypeStr || ''), 45, 91.5);
+
       // Items Table
-      const tableStartY = 95;
+      const tableStartY = 103;
       
       doc.setFillColor(29, 62, 137); // Dark Blue Header
       doc.rect(14, tableStartY, 182, 10, 'F');
@@ -459,7 +475,7 @@ const DayBook = () => {
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
-      doc.text("iNex - Premium Mobile & Laptop Service Center", 105, footerY + 22, { align: 'center' });
+      doc.text("iNex - Premium Service Center", 105, footerY + 22, { align: 'center' });
 
       doc.save(`INEX_Invoice_${jobCard}.pdf`);
       setOpenMenuId(null);
