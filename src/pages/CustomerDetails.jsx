@@ -11,6 +11,7 @@ const CustomerDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editProjectId, setEditProjectId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
 
@@ -111,24 +112,38 @@ const CustomerDetails = () => {
         notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
       };
       
-      const existingProject = projects.find(p => {
-        const normalize = (str) => (str || '').trim().replace(/\s+/g, ' ').toLowerCase();
-        return normalize(p.project_name) === normalize(projectName);
-      });
+      let actualEditProjectId = editProjectId;
       
-      if (existingProject) {
+      if (!actualEditProjectId) {
         // Fallback: update if it already exists to prevent "must be unique" errors
-        await updateProject(existingProject.name, projectData);
+        const existingProject = projects.find(p => {
+          const normalize = (str) => (str || '').trim().replace(/\s+/g, ' ').toLowerCase();
+          return normalize(p.project_name) === normalize(projectName);
+        });
+        if (existingProject) {
+          actualEditProjectId = existingProject.name;
+        }
+      }
+      
+      if (actualEditProjectId) {
+        await updateProject(actualEditProjectId, projectData);
         toast.success('Customer Details Updated!');
       } else {
         // NEW PROJECT: Fetch fresh data to prevent race conditions (duplicate Job Card Codes)
         const latestProjects = await fetchProjects();
         const currentNextCode = getNextJobCardCode(projectData.company, latestProjects);
         
+        // Check if the chosen code is already taken in this branch
+        const codeIsTaken = latestProjects.some(p => {
+          if (p.company !== projectData.company) return false;
+          const pCode = (p.project_name || '').trim().split(/\s+/)[0];
+          return pCode === formData.code;
+        });
+        
         // If the code they are trying to save is already taken, bump it
-        if (parseInt(formData.code, 10) < parseInt(currentNextCode, 10)) {
+        if (codeIsTaken) {
           projectData.project_name = `${currentNextCode} ${formData.name}`;
-          toast.success(`Job Card Code auto-updated to ${currentNextCode} to prevent duplicates.`);
+          toast.success(`Job Card Code ${formData.code} is already taken. Auto-updated to ${currentNextCode} to prevent duplicates.`);
         }
         
         projectData.status = 'Open';
@@ -139,6 +154,7 @@ const CustomerDetails = () => {
       // Reload and reset
       await loadData();
       setIsAdding(false);
+      setEditProjectId(null);
       setFormData({
         code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
@@ -184,6 +200,7 @@ const CustomerDetails = () => {
       delivery: extractNote(p.notes, 'Delivery') || '',
       branch: p.company || ''
     });
+    setEditProjectId(p.name);
     setIsAdding(true);
     setOpenMenuId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -263,6 +280,7 @@ const CustomerDetails = () => {
       code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
       complaint: '', passcode: '', amount: '', receiver: '', technician: '', source: '', delivery: '', branch: initialBranch
     });
+    setEditProjectId(null);
   };
 
   const uniqueTechnicians = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Technician')).filter(Boolean)));
@@ -285,6 +303,7 @@ const CustomerDetails = () => {
               complaint: '', passcode: '', amount: '', receiver: '', technician: '',
               source: '', delivery: '', branch: initialBranch
             });
+            setEditProjectId(null);
             setIsAdding(true);
           }}>
             <Plus size={18} /> Add Entry
@@ -386,7 +405,7 @@ const CustomerDetails = () => {
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-              <Save size={18} /> {isSaving ? 'Saving...' : 'Save to Frappe'}
+              <Save size={18} /> {isSaving ? 'Saving...' : (editProjectId ? 'Update Entry' : 'Save to Frappe')}
             </button>
             <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); handleClear(); }}>
               <X size={18} /> Cancel
