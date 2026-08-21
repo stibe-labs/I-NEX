@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, updateSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -162,7 +162,8 @@ const DayBook = () => {
           if (hasExisting && !formData.create_additional_invoice) {
             const draftInvoice = existingInvoices.find(inv => inv.docstatus === 0);
             if (draftInvoice) {
-              await updateSalesInvoice(draftInvoice.name, invoicePayload);
+              await deleteSalesInvoice(draftInvoice.name);
+              await createSalesInvoice(invoicePayload);
               toast.success("Sales Invoice Updated Automatically!");
             } else {
               console.log("Existing Sales Invoice is not in Draft state. Cannot update automatically.");
