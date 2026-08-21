@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, updateSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -115,50 +115,61 @@ const DayBook = () => {
         
         // Only create invoice if there is some amount
         if (totalAmount > 0 && formData.customer_name) {
-          const invoiceExists = await checkSalesInvoiceExists(savedProjectId);
-          if (invoiceExists && !formData.create_additional_invoice) {
-            console.log("Sales Invoice already exists for this project, skipping auto-creation.");
-          } else {
-            const custName = await ensureCustomer(formData.customer_name);
-            
-            const phone = existingProject?.custom_phone || extractNote(existingNotes, 'Phone');
-            const imei = existingProject?.custom_imei_number;
+          const custName = await ensureCustomer(formData.customer_name);
+          
+          const phone = existingProject?.custom_phone || extractNote(existingNotes, 'Phone');
+          const imei = existingProject?.custom_imei_number;
 
-            const rawConsumption = formData.consumption && formData.consumption !== '-' ? formData.consumption : 'Service';
-            const consumptionParts = rawConsumption.split(/[\+,]+/).map(s => s.trim()).filter(s => s);
-            if (consumptionParts.length === 0) consumptionParts.push('Service');
-            
-            const invoiceItems = [];
-            const baseRate = parseFloat((totalAmount / consumptionParts.length).toFixed(2));
-            
-            for (let i = 0; i < consumptionParts.length; i++) {
-                const part = consumptionParts[i];
-                const exactItemCode = await ensureExactItem(part);
-                
-                let currentRate = baseRate;
-                if (i === consumptionParts.length - 1) {
-                    currentRate = totalAmount - (baseRate * (consumptionParts.length - 1));
-                    currentRate = parseFloat(currentRate.toFixed(2));
-                }
-                
-                invoiceItems.push({
-                  item_code: exactItemCode,
-                  qty: 1,
-                  rate: currentRate,
-                  price_list_rate: currentRate,
-                  amount: currentRate,
-                  project: savedProjectId,
-                  description: `Model: ${formData.model_name || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
-                });
+          const rawConsumption = formData.consumption && formData.consumption !== '-' ? formData.consumption : 'Service';
+          const consumptionParts = rawConsumption.split(/[\+,]+/).map(s => s.trim()).filter(s => s);
+          if (consumptionParts.length === 0) consumptionParts.push('Service');
+          
+          const invoiceItems = [];
+          const baseRate = parseFloat((totalAmount / consumptionParts.length).toFixed(2));
+          
+          for (let i = 0; i < consumptionParts.length; i++) {
+              const part = consumptionParts[i];
+              const exactItemCode = await ensureExactItem(part);
+              
+              let currentRate = baseRate;
+              if (i === consumptionParts.length - 1) {
+                  currentRate = totalAmount - (baseRate * (consumptionParts.length - 1));
+                  currentRate = parseFloat(currentRate.toFixed(2));
+              }
+              
+              invoiceItems.push({
+                item_code: exactItemCode,
+                qty: 1,
+                rate: currentRate,
+                price_list_rate: currentRate,
+                amount: currentRate,
+                project: savedProjectId,
+                description: `Model: ${formData.model_name || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
+              });
+          }
+
+          const invoicePayload = {
+            customer: custName,
+            project: savedProjectId,
+            company: projectData.company,
+            items: invoiceItems,
+            remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}\n\nCustomer Details:\nPhone: ${phone || 'N/A'}\nIMEI: ${imei || 'N/A'}\nComplaint: ${complaint || 'N/A'}\nPasscode: ${passcode || 'N/A'}\nTechnician: ${technician || 'N/A'}\nReceiver: ${receiver || 'N/A'}\nSource: ${source || 'N/A'}\nDelivery: ${delivery || 'N/A'}`
+          };
+
+          const existingInvoices = await getLinkedSalesInvoices(savedProjectId);
+          const hasExisting = existingInvoices.length > 0;
+
+          if (hasExisting && !formData.create_additional_invoice) {
+            const draftInvoice = existingInvoices.find(inv => inv.docstatus === 0);
+            if (draftInvoice) {
+              await updateSalesInvoice(draftInvoice.name, invoicePayload);
+              toast.success("Sales Invoice Updated Automatically!");
+            } else {
+              console.log("Existing Sales Invoice is not in Draft state. Cannot update automatically.");
+              toast.info("Sales Invoice exists but is not a draft. Cannot update.");
             }
-
-            await createSalesInvoice({
-              customer: custName,
-              project: savedProjectId,
-              company: projectData.company,
-              items: invoiceItems,
-              remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}\n\nCustomer Details:\nPhone: ${phone || 'N/A'}\nIMEI: ${imei || 'N/A'}\nComplaint: ${complaint || 'N/A'}\nPasscode: ${passcode || 'N/A'}\nTechnician: ${technician || 'N/A'}\nReceiver: ${receiver || 'N/A'}\nSource: ${source || 'N/A'}\nDelivery: ${delivery || 'N/A'}`
-            });
+          } else {
+            await createSalesInvoice(invoicePayload);
             toast.success("Sales Invoice Created Automatically!");
           }
         }

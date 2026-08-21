@@ -377,6 +377,27 @@ export const createSalesInvoice = async (invoiceData) => {
   }
 };
 
+export const updateSalesInvoice = async (invoiceId, invoiceData) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice/${encodeURIComponent(invoiceId)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(invoiceData),
+    });
+    
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to update Sales Invoice');
+    }
+    
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error updating Sales Invoice", error);
+    throw error;
+  }
+};
+
 export const checkSalesInvoiceExists = async (projectId) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Sales Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&limit=1`, {
