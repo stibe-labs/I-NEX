@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -120,26 +120,43 @@ const DayBook = () => {
             console.log("Sales Invoice already exists for this project, skipping auto-creation.");
           } else {
             const custName = await ensureCustomer(formData.customer_name);
-            const itemCode = await ensureItem(formData.job_card, formData.consumption);
             
             const phone = existingProject?.custom_phone || extractNote(existingNotes, 'Phone');
             const imei = existingProject?.custom_imei_number;
+
+            const rawConsumption = formData.consumption && formData.consumption !== '-' ? formData.consumption : 'Service';
+            const consumptionParts = rawConsumption.split(/[\+,]+/).map(s => s.trim()).filter(s => s);
+            if (consumptionParts.length === 0) consumptionParts.push('Service');
+            
+            const invoiceItems = [];
+            const baseRate = parseFloat((totalAmount / consumptionParts.length).toFixed(2));
+            
+            for (let i = 0; i < consumptionParts.length; i++) {
+                const part = consumptionParts[i];
+                const exactItemCode = await ensureExactItem(part);
+                
+                let currentRate = baseRate;
+                if (i === consumptionParts.length - 1) {
+                    currentRate = totalAmount - (baseRate * (consumptionParts.length - 1));
+                    currentRate = parseFloat(currentRate.toFixed(2));
+                }
+                
+                invoiceItems.push({
+                  item_code: exactItemCode,
+                  qty: 1,
+                  rate: currentRate,
+                  price_list_rate: currentRate,
+                  amount: currentRate,
+                  project: savedProjectId,
+                  description: `Model: ${formData.model_name || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
+                });
+            }
 
             await createSalesInvoice({
               customer: custName,
               project: savedProjectId,
               company: projectData.company,
-              items: [
-                {
-                  item_code: itemCode,
-                  qty: 1,
-                  rate: totalAmount,
-                  price_list_rate: totalAmount,
-                  amount: totalAmount,
-                  project: savedProjectId,
-                  description: `Model: ${formData.model_name || 'N/A'}\nConsumption: ${formData.consumption || 'N/A'}\nWarranty: ${formData.warranty || 'N/A'}\nCash: ${formData.cash || 0} | Bank: ${formData.bank || 0} | Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0} | Profit: ${formData.profit || 0}`
-                }
-              ],
+              items: invoiceItems,
               remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}\n\nCustomer Details:\nPhone: ${phone || 'N/A'}\nIMEI: ${imei || 'N/A'}\nComplaint: ${complaint || 'N/A'}\nPasscode: ${passcode || 'N/A'}\nTechnician: ${technician || 'N/A'}\nReceiver: ${receiver || 'N/A'}\nSource: ${source || 'N/A'}\nDelivery: ${delivery || 'N/A'}`
             });
             toast.success("Sales Invoice Created Automatically!");

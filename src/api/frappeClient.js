@@ -334,6 +334,28 @@ export const ensureItem = async (jobCardCode, itemDescription = '') => {
   }
 };
 
+export const ensureExactItem = async (itemName) => {
+  try {
+    const itemCode = itemName ? itemName.trim().substring(0, 140) : 'Service';
+    
+    await fetch(`${API_URL}/api/resource/Item`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({
+        item_code: itemCode,
+        item_name: itemCode,
+        item_group: 'Products',
+        is_stock_item: 0
+      })
+    });
+    return itemCode;
+  } catch (error) {
+    console.error("Error ensuring exact Item:", error);
+    return itemName ? itemName.trim().substring(0, 140) : 'Service';
+  }
+};
+
 export const createSalesInvoice = async (invoiceData) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Sales Invoice`, {
