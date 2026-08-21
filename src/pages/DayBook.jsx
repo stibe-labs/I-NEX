@@ -364,9 +364,9 @@ const DayBook = () => {
       doc.text(String(warranty || ''), 45, 83.5);
 
       doc.setFont("helvetica", "bold");
-      doc.text("Customer NO :", 104, 83.5);
+      doc.text("Customer Phone :", 104, 83.5);
       doc.setFont("helvetica", "normal");
-      doc.text(String(jobCard || ''), 135, 83.5);
+      doc.text(String(customerPhone || ''), 135, 83.5);
 
       doc.setFont("helvetica", "bold");
       doc.text("Payment Type :", 18, 91.5);
