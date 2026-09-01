@@ -621,7 +621,7 @@ export const getINEXBranchConfig = () => INEX_BRANCH_CONFIG;
 
 export const fetchINEXItems = async (prefix) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Item?filters=[["item_code","like","${prefix}%"]]&fields=["item_code","item_name","item_group","stock_uom","disabled","description"]&limit=1000&order_by=item_code asc`, {
+    const res = await fetch(`${API_URL}/api/resource/Item?filters=[["item_code","like","${prefix}%"]]&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]&limit=1000&order_by=item_code asc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -676,7 +676,7 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
       payload.opening_stock = parseFloat(quantity) || 0;
       payload.valuation_rate = 0; // Usually required when setting opening stock
       payload.standard_rate = 0;
-      payload.description = quantity.toString(); // Save to description for visibility
+      payload.custom_unit_qty = quantity.toString(); // Save to custom field
     }
 
     const res = await fetch(`${API_URL}/api/resource/Item`, {

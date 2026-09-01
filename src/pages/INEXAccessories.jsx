@@ -80,7 +80,7 @@ const INEXAccessories = () => {
       if (editingItem) {
         await updateINEXItem(editingItem.item_code, {
           item_name: formData.item_name.trim(),
-          description: formData.uom.trim()
+          custom_unit_qty: formData.uom.trim()
         });
         toast.success(`Item ${editingItem.item_code} updated successfully!`);
       } else {
@@ -108,8 +108,8 @@ const INEXAccessories = () => {
 
   const handleEditClick = (item) => {
     setEditingItem(item);
-    // Use description as the storage for custom quantity/unit
-    setFormData({ item_name: item.item_name, uom: item.description || '' }); 
+    // Use custom_unit_qty as the storage for custom quantity/unit
+    setFormData({ item_name: item.item_name, uom: item.custom_unit_qty || '' }); 
     setIsAdding(true);
   };
 
@@ -373,8 +373,8 @@ const INEXAccessories = () => {
                     </span>
                   </td>
                   <td style={{ color: 'var(--text-secondary)' }}>
-                    {item.description ? (
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.description}</span>
+                    {item.custom_unit_qty ? (
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.custom_unit_qty}</span>
                     ) : (
                       'Nos'
                     )}
