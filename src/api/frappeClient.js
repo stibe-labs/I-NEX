@@ -608,6 +608,112 @@ export const fetchSalesInvoices = async () => {
   }
 };
 
+// Fetch full Sales Invoice details including items (for consumption)
+export const fetchSalesInvoiceDetails = async (invoiceName) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice/${encodeURIComponent(invoiceName)}`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.data || null;
+  } catch (error) {
+    console.error("Error fetching Sales Invoice details", error);
+    return null;
+  }
+};
+
+// Fetch Payment Entries linked to a Sales Invoice
+export const fetchPaymentEntriesForInvoice = async (invoiceName) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Payment Entry?filters=[["Payment Entry Reference","reference_name","=","${encodeURIComponent(invoiceName)}"]]&fields=["name","mode_of_payment","paid_amount","posting_date"]&limit=100`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching Payment Entries", error);
+    return [];
+  }
+};
+
+// Batch-enrich projects with Sales Invoice + Payment Entry data for Day Book
+export const enrichProjectsWithFrappeData = async (projects) => {
+  // Step 1: Fetch ALL Sales Invoices with project links in one call
+  const allSalesInvoices = await fetchSalesInvoices();
+  
+  // Group invoices by project
+  const invoicesByProject = {};
+  for (const si of allSalesInvoices) {
+    if (si.project) {
+      if (!invoicesByProject[si.project]) invoicesByProject[si.project] = [];
+      invoicesByProject[si.project].push(si);
+    }
+  }
+
+  // Step 2: For each project that has invoices, fetch item details and payment entries
+  const enrichedData = {};
+  
+  const projectsWithInvoices = projects.filter(p => invoicesByProject[p.name]?.length > 0);
+  
+  // Process in parallel batches of 5 to avoid overwhelming the server
+  const batchSize = 5;
+  for (let i = 0; i < projectsWithInvoices.length; i += batchSize) {
+    const batch = projectsWithInvoices.slice(i, i + batchSize);
+    
+    await Promise.all(batch.map(async (project) => {
+      const invoices = invoicesByProject[project.name] || [];
+      let consumption = [];
+      let totalProfit = 0;
+      let cashTotal = 0;
+      let bankTotal = 0;
+      let creditTotal = 0;
+      
+      for (const si of invoices) {
+        // Fetch invoice details for items
+        const details = await fetchSalesInvoiceDetails(si.name);
+        if (details) {
+          // Consumption = all item names joined
+          if (details.items && details.items.length > 0) {
+            consumption.push(...details.items.map(item => item.item_name));
+          }
+          totalProfit += details.grand_total || 0;
+        }
+        
+        // Fetch payment entries for this invoice
+        const payments = await fetchPaymentEntriesForInvoice(si.name);
+        for (const pe of payments) {
+          const mode = (pe.mode_of_payment || '').toLowerCase().trim();
+          const amount = pe.paid_amount || 0;
+          if (mode === 'cash') {
+            cashTotal += amount;
+          } else if (mode === 'credit' || mode === 'credit card') {
+            creditTotal += amount;
+          } else {
+            // Default to bank for any other mode (including empty)
+            bankTotal += amount;
+          }
+        }
+      }
+      
+      enrichedData[project.name] = {
+        consumption: [...new Set(consumption)].join(', '),
+        profit: totalProfit,
+        cash: cashTotal,
+        bank: bankTotal,
+        credit: creditTotal,
+        hasInvoiceData: true
+      };
+    }));
+  }
+  
+  return enrichedData;
+};
+
+
 // --- INEX Accessories (Item Management) API ---
 
 // Branch config: prefix and warehouse mapping

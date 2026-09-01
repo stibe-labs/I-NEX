@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice, enrichProjectsWithFrappeData } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -9,6 +9,7 @@ import { useAuth } from '../App';
 const DayBook = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [enrichedData, setEnrichedData] = useState({});
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +46,14 @@ const DayBook = () => {
     try {
       const data = await fetchProjects();
       setProjects(data);
+      // Enrich with Sales Invoice + Payment Entry data from Frappe
+      try {
+        const enriched = await enrichProjectsWithFrappeData(data);
+        setEnrichedData(enriched);
+      } catch (enrichErr) {
+        console.error('Failed to enrich with Frappe data:', enrichErr);
+        // Non-fatal: the page still works with notes-based data
+      }
     } catch (e) {
       console.error(e);
       toast.error("Failed to load projects");
@@ -528,8 +537,10 @@ const DayBook = () => {
 
   // Filter projects based on search term and user role and Day Book constraints
   const filteredProjects = projects.filter(p => {
-    // Only include if it has actual Day Book sale data (Amount > 0 or Day Book notes)
-    const hasDayBookData = p.total_billed_amount > 0 || 
+    // Include if it has actual Day Book data from notes OR enriched Frappe data
+    const hasEnriched = enrichedData[p.name]?.hasInvoiceData;
+    const hasDayBookData = hasEnriched ||
+                           p.total_billed_amount > 0 || 
                            p.total_costing_amount > 0 || 
                            extractNote(p.notes, 'Cash') !== '' || 
                            extractNote(p.notes, 'Bank') !== '' || 
@@ -761,6 +772,18 @@ const DayBook = () => {
                 const nameParts = (p.project_name || '').trim().split(/\s+/);
                 const code = nameParts[0] || '';
                 const name = nameParts.slice(1).join(' ') || '';
+                
+                // Get enriched Frappe data (Sales Invoice + Payment Entry)
+                const ed = enrichedData[p.name];
+                
+                // Prefer enriched data, fall back to notes
+                const consumption = ed?.consumption || extractNote(p.notes, 'Consumption') || '-';
+                const warranty = extractNote(p.notes, 'Warranty') || '-';
+                const cash = ed?.cash ? String(ed.cash) : (extractNote(p.notes, 'Cash') || '-');
+                const bank = ed?.bank ? String(ed.bank) : (extractNote(p.notes, 'Bank') || '-');
+                const credit = ed?.credit ? String(ed.credit) : (extractNote(p.notes, 'Credit') || '-');
+                const cost = extractNote(p.notes, 'Cost') || (p.total_costing_amount ? String(p.total_costing_amount) : '-');
+                const profit = ed?.profit ? String(ed.profit) : (extractNote(p.notes, 'Profit') || (p.total_billed_amount ? String(p.total_billed_amount) : '-'));
 
                 return (
                   <tr key={p.name || i}>
@@ -768,13 +791,13 @@ const DayBook = () => {
                     <td style={{ fontWeight: 600 }}>{name}</td>
                     <td>{code}</td>
                     <td>{p.custom_model_name || '-'}</td>
-                    <td>{extractNote(p.notes, 'Consumption') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Warranty') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Cash') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Bank') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Credit') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Cost') || p.total_costing_amount || '-'}</td>
-                    <td style={{ color: 'var(--primary-color)', fontWeight: 600 }}>{extractNote(p.notes, 'Profit') || p.total_billed_amount || '-'}</td>
+                    <td>{consumption}</td>
+                    <td>{warranty}</td>
+                    <td>{cash}</td>
+                    <td>{bank}</td>
+                    <td>{credit}</td>
+                    <td>{cost}</td>
+                    <td style={{ color: 'var(--primary-color)', fontWeight: 600 }}>{profit}</td>
                     <td style={{ position: 'relative' }}>
                       <button 
                         className="btn-icon" 
