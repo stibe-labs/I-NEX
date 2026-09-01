@@ -79,7 +79,8 @@ const INEXAccessories = () => {
     try {
       if (editingItem) {
         await updateINEXItem(editingItem.item_code, {
-          item_name: formData.item_name.trim()
+          item_name: formData.item_name.trim(),
+          description: formData.uom.trim()
         });
         toast.success(`Item ${editingItem.item_code} updated successfully!`);
       } else {
@@ -107,7 +108,8 @@ const INEXAccessories = () => {
 
   const handleEditClick = (item) => {
     setEditingItem(item);
-    setFormData({ item_name: item.item_name, uom: '' }); // UOM/Quantity editing is typically not allowed/needed on update
+    // Use description as the storage for custom quantity/unit
+    setFormData({ item_name: item.item_name, uom: item.description || '' }); 
     setIsAdding(true);
   };
 
@@ -370,7 +372,13 @@ const INEXAccessories = () => {
                       {item.item_group}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{item.stock_uom || 'Nos'}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>
+                    {item.description ? (
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.description}</span>
+                    ) : (
+                      'Nos'
+                    )}
+                  </td>
                   <td>
                     <span style={{
                       padding: '0.25rem 0.65rem',
