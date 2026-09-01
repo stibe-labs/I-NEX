@@ -276,8 +276,6 @@ const INEXAccessories = () => {
                 value={formData.uom}
                 onChange={e => setFormData({ ...formData, uom: e.target.value })}
                 min="0"
-                disabled={!!editingItem} // Disable changing qty on edit for simplicity
-                style={{ opacity: editingItem ? 0.6 : 1 }}
               />
             </div>
           </div>
