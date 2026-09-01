@@ -696,3 +696,43 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
     throw error;
   }
 };
+
+export const updateINEXItem = async (itemCode, updateData) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(updateData),
+    });
+
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to update INEX item');
+    }
+
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error updating INEX item", error);
+    throw error;
+  }
+};
+
+export const deleteINEXItem = async (itemCode) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to delete INEX item');
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting INEX item", error);
+    throw error;
+  }
+};

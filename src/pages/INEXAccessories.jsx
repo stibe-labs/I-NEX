@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchINEXItems, getNextINEXItemId, createINEXItem, getINEXBranchConfig } from '../api/frappeClient';
-import { Plus, Save, X, Package, RefreshCw, Loader2 } from 'lucide-react';
+import { fetchINEXItems, getNextINEXItemId, createINEXItem, updateINEXItem, deleteINEXItem, getINEXBranchConfig } from '../api/frappeClient';
+import { Plus, Save, X, Package, RefreshCw, Loader2, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -25,6 +25,14 @@ const INEXAccessories = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [nextId, setNextId] = useState('');
+  const [editingItem, setEditingItem] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setDropdownOpen(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
   
   const [formData, setFormData] = useState({
     item_name: '',
@@ -69,34 +77,61 @@ const INEXAccessories = () => {
 
     setIsSaving(true);
     try {
-      await createINEXItem({
-        itemCode: nextId,
-        itemName: formData.item_name.trim(),
-        uom: 'Nos', // Fixed as Nos since frappe default is NOS
-        warehouse: currentConfig.warehouse,
-        quantity: formData.uom.trim() // Pass the number input as quantity
-      });
-
-      toast.success(`Item ${nextId} created successfully!`);
+      if (editingItem) {
+        await updateINEXItem(editingItem.item_code, {
+          item_name: formData.item_name.trim()
+        });
+        toast.success(`Item ${editingItem.item_code} updated successfully!`);
+      } else {
+        await createINEXItem({
+          itemCode: nextId,
+          itemName: formData.item_name.trim(),
+          uom: 'Nos',
+          warehouse: currentConfig.warehouse,
+          quantity: formData.uom.trim()
+        });
+        toast.success(`Item ${nextId} created successfully!`);
+      }
+      
       setIsAdding(false);
+      setEditingItem(null);
       setFormData({ item_name: '', uom: '' });
       await loadData();
       await loadNextId();
     } catch (e) {
-      toast.error(e.message || 'Failed to create item');
+      toast.error(e.message || 'Failed to save item');
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleEditClick = (item) => {
+    setEditingItem(item);
+    setFormData({ item_name: item.item_name, uom: '' }); // UOM/Quantity editing is typically not allowed/needed on update
+    setIsAdding(true);
+  };
+
+  const handleDeleteClick = async (itemCode) => {
+    if (!window.confirm(`Are you sure you want to delete ${itemCode}?`)) return;
+    try {
+      await deleteINEXItem(itemCode);
+      toast.success(`${itemCode} deleted successfully`);
+      loadData();
+    } catch (e) {
+      toast.error(e.message || 'Failed to delete item');
+    }
+  };
+
   const handleCancel = () => {
     setIsAdding(false);
+    setEditingItem(null);
     setFormData({ item_name: '', uom: '' });
   };
 
   const handleBranchChange = (branch) => {
     setSelectedBranch(branch);
     setIsAdding(false);
+    setEditingItem(null);
     setFormData({ item_name: '', uom: '' });
   };
 
@@ -178,17 +213,17 @@ const INEXAccessories = () => {
         })}
       </div>
 
-      {/* Add Item Form */}
+      {/* Add/Edit Item Form */}
       {isAdding && (
         <div className="glass-card" style={{ marginBottom: '1.5rem', animation: 'fadeIn 0.3s ease-out' }}>
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={20} style={{ color: 'var(--primary-color)' }} />
-            New Item — {selectedBranch}
+            {editingItem ? <Edit size={20} style={{ color: 'var(--primary-color)' }} /> : <Plus size={20} style={{ color: 'var(--primary-color)' }} />}
+            {editingItem ? `Edit Item — ${editingItem.item_code}` : `New Item — ${selectedBranch}`}
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             {/* ID - Auto-generated (read-only) */}
             <div className="input-group">
-              <label>ID <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>(auto)</span></label>
+              <label>ID <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>(fixed)</span></label>
               <div style={{
                 padding: '0.75rem 1rem',
                 borderRadius: '10px',
@@ -199,7 +234,7 @@ const INEXAccessories = () => {
                 color: 'var(--primary-color)',
                 letterSpacing: '0.5px'
               }}>
-                {nextId || <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+                {editingItem ? editingItem.item_code : (nextId || <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />)}
               </div>
             </div>
 
@@ -241,6 +276,8 @@ const INEXAccessories = () => {
                 value={formData.uom}
                 onChange={e => setFormData({ ...formData, uom: e.target.value })}
                 min="0"
+                disabled={!!editingItem} // Disable changing qty on edit for simplicity
+                style={{ opacity: editingItem ? 0.6 : 1 }}
               />
             </div>
           </div>
@@ -313,6 +350,7 @@ const INEXAccessories = () => {
                 <th>ITEM GROUP</th>
                 <th>UNIT</th>
                 <th>STATUS</th>
+                <th style={{ width: '60px', textAlign: 'center' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -347,11 +385,59 @@ const INEXAccessories = () => {
                       {item.disabled ? 'Disabled' : 'Enabled'}
                     </span>
                   </td>
+                  <td style={{ position: 'relative', textAlign: 'center' }}>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDropdownOpen(dropdownOpen === item.item_code ? null : item.item_code);
+                      }}
+                      style={{ 
+                        border: 'none', background: 'transparent', cursor: 'pointer',
+                        color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '50%' 
+                      }}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {dropdownOpen === item.item_code && (
+                      <div style={{
+                        position: 'absolute',
+                        right: '80%',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: '#fff',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        borderRadius: '8px',
+                        padding: '0.4rem',
+                        zIndex: 100,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minWidth: '120px'
+                      }}>
+                        <button 
+                          onClick={() => handleEditClick(item)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Edit size={14} style={{ color: 'var(--primary-color)' }} /> Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteClick(item.item_code)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--danger-color)' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                     No items found for {selectedBranch}. Click "Add Item" to create one.
                   </td>
                 </tr>
