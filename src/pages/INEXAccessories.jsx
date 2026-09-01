@@ -67,12 +67,19 @@ const INEXAccessories = () => {
       return;
     }
 
+    // ERPNext requires a valid string for Unit of Measure (e.g. "Nos", "Kg", "Box").
+    // If the user typed a number (like "1") or left it blank, default to "Nos"
+    let finalUom = formData.uom.trim();
+    if (!finalUom || !isNaN(finalUom)) {
+      finalUom = 'Nos';
+    }
+
     setIsSaving(true);
     try {
       await createINEXItem({
         itemCode: nextId,
         itemName: formData.item_name.trim(),
-        uom: formData.uom.trim() || 'Nos',
+        uom: finalUom,
         warehouse: currentConfig.warehouse
       });
 
