@@ -9,15 +9,20 @@ const getHeaders = () => ({
 });
 
 async function testOptimizedFetch() {
-  console.log('Fetching Sales Invoice Items via REST...');
-  const res2 = await fetch(`${API_URL}/api/resource/Sales Invoice Item?fields=["name","parent","item_name","project"]&limit=10`, { headers: getHeaders() });
+  const res = await fetch(`${API_URL}/api/resource/Project?fields=["name","notes","total_billed_amount","total_costing_amount"]&limit=5000`, { headers: getHeaders() });
+  const projects = (await res.json()).data;
   
-  if (res2.ok) {
-    const data = await res2.json();
-    console.log(`Found ${data.data?.length} Sales Invoice Items.`);
-  } else {
-    console.error("Failed:", res2.status, await res2.text());
+  let missingConsumption = 0;
+  for (const p of projects) {
+    const hasData = p.total_billed_amount > 0 || p.total_costing_amount > 0 || p.notes?.includes('Cash:') || p.notes?.includes('Profit:');
+    if (hasData) {
+      if (!p.notes || !p.notes.includes('Consumption:')) {
+        missingConsumption++;
+      }
+    }
   }
+  
+  console.log(`Out of ${projects.length} projects, ${missingConsumption} are missing consumption in notes but have financial data.`);
 }
 
 testOptimizedFetch().catch(console.error);

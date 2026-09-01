@@ -700,6 +700,7 @@ export const enrichProjectsWithFrappeData = async (projects) => {
         cash: cashTotal,
         bank: bankTotal,
         credit: creditTotal,
+        invoiceNames: invoices.map(i => i.name),
         hasInvoiceData: true
       };
     }

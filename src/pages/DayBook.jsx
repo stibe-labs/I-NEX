@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice, enrichProjectsWithFrappeData } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice, enrichProjectsWithFrappeData, fetchSalesInvoiceDetails } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -65,6 +65,72 @@ const DayBook = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Background fetch for missing consumption data (Sales Invoice Items)
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchMissingConsumptions = async () => {
+      // Find projects currently rendered that have missing consumption
+      const projectsToFetch = filteredProjects.filter(p => {
+        const ed = enrichedData[p.name];
+        if (!ed || !ed.hasInvoiceData || !ed.invoiceNames || ed.invoiceNames.length === 0) return false;
+        
+        // Skip if already fetched or if it has consumption in notes
+        if (ed.consumption !== undefined) return false;
+        const notesConsumption = extractNote(p.notes, 'Consumption');
+        return !notesConsumption; // Fetch if notes is empty
+      });
+      
+      if (projectsToFetch.length === 0) return;
+      
+      // Fetch in small batches so we don't overwhelm Frappe or lock UI
+      const batchSize = 3;
+      for (let i = 0; i < projectsToFetch.length; i += batchSize) {
+        if (!isMounted) break;
+        
+        const batch = projectsToFetch.slice(i, i + batchSize);
+        const updates = {};
+        
+        await Promise.all(batch.map(async (project) => {
+          const ed = enrichedData[project.name];
+          let consumptionList = [];
+          
+          for (const invoiceName of ed.invoiceNames) {
+            try {
+              const details = await fetchSalesInvoiceDetails(invoiceName);
+              if (details && details.items) {
+                consumptionList.push(...details.items.map(item => item.item_name));
+              }
+            } catch (err) {
+              console.error(`Failed to fetch details for invoice ${invoiceName}`);
+            }
+          }
+          
+          updates[project.name] = {
+            ...ed,
+            consumption: [...new Set(consumptionList)].join(', ') || '-'
+          };
+        }));
+        
+        if (isMounted && Object.keys(updates).length > 0) {
+          setEnrichedData(prev => ({
+            ...prev,
+            ...updates
+          }));
+        }
+        
+        // Small delay between batches to let React render
+        await new Promise(r => setTimeout(r, 200));
+      }
+    };
+    
+    if (filteredProjects.length > 0) {
+      fetchMissingConsumptions();
+    }
+    
+    return () => { isMounted = false; };
+  }, [filteredProjects, enrichedData]);
 
   const handleSave = async () => {
     if(!formData.job_card || !formData.customer_name) {
@@ -777,7 +843,10 @@ const DayBook = () => {
                 const ed = enrichedData[p.name];
                 
                 // Prefer enriched data, fall back to notes
-                const consumption = ed?.consumption || extractNote(p.notes, 'Consumption') || '-';
+                // For consumption, show "Loading..." if we are planning to fetch it but haven't yet
+                const isMissingConsumption = ed?.hasInvoiceData && ed?.invoiceNames?.length > 0 && ed.consumption === undefined && !extractNote(p.notes, 'Consumption');
+                const consumption = ed?.consumption !== undefined ? ed.consumption : (extractNote(p.notes, 'Consumption') || (isMissingConsumption ? 'Loading...' : '-'));
+                
                 const warranty = extractNote(p.notes, 'Warranty') || '-';
                 const cash = ed?.cash ? String(ed.cash) : (extractNote(p.notes, 'Cash') || '-');
                 const bank = ed?.bank ? String(ed.bank) : (extractNote(p.notes, 'Bank') || '-');
