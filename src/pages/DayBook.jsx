@@ -6,6 +6,13 @@ import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
+const extractNote = (notes, key) => {
+  if (!notes) return '';
+  const plainText = notes.replace(/<[^>]*>?/gm, '\n');
+  const match = plainText.match(new RegExp(`${key}:[ \\t]*(.*)`));
+  return match ? match[1].trim() : '';
+};
+
 const DayBook = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
@@ -61,6 +68,33 @@ const DayBook = () => {
       setLoading(false);
     }
   };
+
+  // Filter projects based on search term and user role and Day Book constraints
+  const filteredProjects = projects.filter(p => {
+    // Include if it has actual Day Book data from notes OR enriched Frappe data
+    const hasEnriched = enrichedData[p.name]?.hasInvoiceData;
+    const hasDayBookData = hasEnriched ||
+                           p.total_billed_amount > 0 || 
+                           p.total_costing_amount > 0 || 
+                           extractNote(p.notes, 'Cash') !== '' || 
+                           extractNote(p.notes, 'Bank') !== '' || 
+                           extractNote(p.notes, 'Credit') !== '' || 
+                           extractNote(p.notes, 'Consumption') !== '' ||
+                           extractNote(p.notes, 'Profit') !== '' ||
+                           extractNote(p.notes, 'Cost') !== '';
+    if (!hasDayBookData) return false;
+
+    // Branch Filter: Branches only see their own records. Admins see all.
+    if (user?.role === 'branch' && p.company !== user?.name) return false;
+    
+    // Admin branch filter dropdown
+    if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
+
+    const term = searchTerm.toLowerCase();
+    const nameStr = (p.project_name || '').toLowerCase();
+    const modelStr = (p.custom_model_name || '').toLowerCase();
+    return nameStr.includes(term) || modelStr.includes(term);
+  });
 
   useEffect(() => {
     loadData();
@@ -594,39 +628,6 @@ const DayBook = () => {
     };
   };
 
-  const extractNote = (notes, key) => {
-    if (!notes) return '';
-    const plainText = notes.replace(/<[^>]*>?/gm, '\n');
-    const match = plainText.match(new RegExp(`${key}:[ \\t]*(.*)`));
-    return match ? match[1].trim() : '';
-  };
-
-  // Filter projects based on search term and user role and Day Book constraints
-  const filteredProjects = projects.filter(p => {
-    // Include if it has actual Day Book data from notes OR enriched Frappe data
-    const hasEnriched = enrichedData[p.name]?.hasInvoiceData;
-    const hasDayBookData = hasEnriched ||
-                           p.total_billed_amount > 0 || 
-                           p.total_costing_amount > 0 || 
-                           extractNote(p.notes, 'Cash') !== '' || 
-                           extractNote(p.notes, 'Bank') !== '' || 
-                           extractNote(p.notes, 'Credit') !== '' || 
-                           extractNote(p.notes, 'Consumption') !== '' ||
-                           extractNote(p.notes, 'Profit') !== '' ||
-                           extractNote(p.notes, 'Cost') !== '';
-    if (!hasDayBookData) return false;
-
-    // Branch Filter: Branches only see their own records. Admins see all.
-    if (user?.role === 'branch' && p.company !== user?.name) return false;
-    
-    // Admin branch filter dropdown
-    if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
-
-    const term = searchTerm.toLowerCase();
-    const nameStr = (p.project_name || '').toLowerCase();
-    const modelStr = (p.custom_model_name || '').toLowerCase();
-    return nameStr.includes(term) || modelStr.includes(term);
-  });
 
   const handleClear = () => {
     setFormData({
