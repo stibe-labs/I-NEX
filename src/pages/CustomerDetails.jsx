@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProjects, createProject, deleteProject, updateProject } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Trash2, Edit } from 'lucide-react';
+import { Plus, Save, X, MoreVertical, Trash2, Edit, RefreshCw } from 'lucide-react';
 import { useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -289,9 +289,13 @@ const CustomerDetails = () => {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1>Customer Details</h1>
-        {!isAdding && (
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button className="btn" style={{ background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={loadData}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+          {!isAdding && (
           <button className="btn btn-primary" onClick={() => {
             const initialBranch = user?.role === 'admin' ? '' : (user?.name || '');
             let nextCode = '';
@@ -309,6 +313,7 @@ const CustomerDetails = () => {
             <Plus size={18} /> Add Entry
           </button>
         )}
+        </div>
       </div>
 
       {isAdding && (

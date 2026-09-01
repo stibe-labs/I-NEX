@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Edit, Download, Trash2 } from 'lucide-react';
+import { Plus, Save, X, MoreVertical, Edit, Download, Trash2, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
@@ -610,13 +610,18 @@ const DayBook = () => {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1>Day Book</h1>
-        {!isAdding && (
-          <button className="btn btn-primary" onClick={() => setIsAdding(true)}>
-            <Plus size={18} /> New Entry
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button className="btn" style={{ background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={loadData}>
+            <RefreshCw size={16} /> Refresh
           </button>
-        )}
+          {!isAdding && (
+            <button className="btn btn-primary" onClick={() => setIsAdding(true)}>
+              <Plus size={18} /> New Entry
+            </button>
+          )}
+        </div>
       </div>
 
       {isAdding && (
