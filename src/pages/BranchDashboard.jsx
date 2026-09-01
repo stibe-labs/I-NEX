@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, PlusCircle, Users, BookOpen, ChevronRight, Package, DollarSign } from 'lucide-react';
+import { Search, PlusCircle, Users, BookOpen, ChevronRight, Package, DollarSign, Boxes } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -53,6 +53,17 @@ const BranchDashboard = () => {
               <div className="quick-link-text">
                 <h4>Accessories</h4>
                 <p>Track accessory stock and sales</p>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary)" />
+            </Link>
+
+            <Link to="/inex-accessories" className="quick-link-card">
+              <div className="quick-link-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}>
+                <Boxes size={20} />
+              </div>
+              <div className="quick-link-text">
+                <h4>INEX Accessories</h4>
+                <p>Manage INEX items for your branch</p>
               </div>
               <ChevronRight size={20} color="var(--text-secondary)" />
             </Link>

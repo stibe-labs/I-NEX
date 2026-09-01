@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign, ShoppingCart, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign, ShoppingCart, ChevronLeft, ChevronRight, Smartphone, Boxes } from 'lucide-react';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BranchDashboard from './pages/BranchDashboard';
@@ -12,6 +12,7 @@ import Accessories from './pages/Accessories';
 import ExpenseIncome from './pages/ExpenseIncome';
 import PurchaseOrder from './pages/PurchaseOrder';
 import PhonePurchaseSale from './pages/PhonePurchaseSale';
+import INEXAccessories from './pages/INEXAccessories';
 import './index.css';
 
 // Simple mockup of auth state for UI flow
@@ -119,6 +120,10 @@ const Layout = ({ children }) => {
             <Package size={18} /> 
             <span className="nav-link-text">Accessories</span>
           </Link>
+          <Link to="/inex-accessories" onClick={closeMenu} className={`nav-link ${isActive('/inex-accessories')}`} title="INEX Accessories">
+            <Boxes size={18} /> 
+            <span className="nav-link-text">INEX Accessories</span>
+          </Link>
           <Link to="/expenses" onClick={closeMenu} className={`nav-link ${isActive('/expenses')}`} title="Expenses">
             <DollarSign size={18} /> 
             <span className="nav-link-text">Expenses</span>
@@ -191,6 +196,7 @@ function App() {
           <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><Layout><TeamManagement /></Layout></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><Layout><CustomerDetails /></Layout></ProtectedRoute>} />
           <Route path="/accessories" element={<ProtectedRoute><Layout><Accessories /></Layout></ProtectedRoute>} />
+          <Route path="/inex-accessories" element={<ProtectedRoute><Layout><INEXAccessories /></Layout></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute><Layout><ExpenseIncome /></Layout></ProtectedRoute>} />
           <Route path="/purchase" element={<ProtectedRoute><Layout><PurchaseOrder /></Layout></ProtectedRoute>} />
           <Route path="/phone-purchase-sale" element={<ProtectedRoute><Layout><PhonePurchaseSale /></Layout></ProtectedRoute>} />

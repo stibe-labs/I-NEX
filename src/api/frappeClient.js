@@ -607,3 +607,83 @@ export const fetchSalesInvoices = async () => {
     return [];
   }
 };
+
+// --- INEX Accessories (Item Management) API ---
+
+// Branch config: prefix and warehouse mapping
+const INEX_BRANCH_CONFIG = {
+  'INEX Perumbavoor': { prefix: 'IP', warehouse: 'Stores - IA' },
+  'INEX Kaloor': { prefix: 'IK', warehouse: 'Stores - IA' },
+  'INEX Thodupuzha': { prefix: 'IT', warehouse: 'Stores - IT' },
+};
+
+export const getINEXBranchConfig = () => INEX_BRANCH_CONFIG;
+
+export const fetchINEXItems = async (prefix) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Item?filters=[["item_code","like","${prefix}%"]]&fields=["item_code","item_name","item_group","stock_uom","disabled"]&limit=1000&order_by=item_code asc`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to fetch INEX items');
+    }
+    const data = await res.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching INEX items", error);
+    return [];
+  }
+};
+
+export const getNextINEXItemId = async (prefix) => {
+  try {
+    const items = await fetchINEXItems(prefix);
+    let maxNum = 0;
+    items.forEach(item => {
+      const code = item.item_code || '';
+      const numPart = code.replace(prefix, '');
+      const num = parseInt(numPart, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    });
+    return `${prefix}${maxNum + 1}`;
+  } catch (error) {
+    console.error("Error getting next INEX item ID", error);
+    return `${prefix}1`;
+  }
+};
+
+export const createINEXItem = async ({ itemCode, itemName, uom, warehouse }) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Item`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({
+        item_code: itemCode,
+        item_name: itemName,
+        item_group: 'Products',
+        stock_uom: uom || 'Nos',
+        is_stock_item: 1,
+        item_defaults: [
+          {
+            company: 'INEX Accessories',
+            default_warehouse: warehouse
+          }
+        ]
+      }),
+    });
+
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to create INEX item');
+    }
+
+    const data = await res.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error creating INEX item", error);
+    throw error;
+  }
+};
