@@ -67,20 +67,14 @@ const INEXAccessories = () => {
       return;
     }
 
-    // ERPNext requires a valid string for Unit of Measure (e.g. "Nos", "Kg", "Box").
-    // If the user typed a number (like "1") or left it blank, default to "Nos"
-    let finalUom = formData.uom.trim();
-    if (!finalUom || !isNaN(finalUom)) {
-      finalUom = 'Nos';
-    }
-
     setIsSaving(true);
     try {
       await createINEXItem({
         itemCode: nextId,
         itemName: formData.item_name.trim(),
-        uom: finalUom,
-        warehouse: currentConfig.warehouse
+        uom: 'Nos', // Fixed as Nos since frappe default is NOS
+        warehouse: currentConfig.warehouse,
+        quantity: formData.uom.trim() // Pass the number input as quantity
       });
 
       toast.success(`Item ${nextId} created successfully!`);
@@ -237,15 +231,16 @@ const INEXAccessories = () => {
               </div>
             </div>
 
-            {/* Unit / NOS */}
+            {/* Unit / Quantity */}
             <div className="input-group">
-              <label>Unit / NOS</label>
+              <label>Unit (Qty)</label>
               <input
-                type="text"
+                type="number"
                 className="input-field"
-                placeholder="e.g. Nos, KG, Piece"
+                placeholder="e.g. 1, 2, 5"
                 value={formData.uom}
                 onChange={e => setFormData({ ...formData, uom: e.target.value })}
+                min="0"
               />
             </div>
           </div>

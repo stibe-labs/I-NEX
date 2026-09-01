@@ -655,25 +655,34 @@ export const getNextINEXItemId = async (prefix) => {
   }
 };
 
-export const createINEXItem = async ({ itemCode, itemName, uom, warehouse }) => {
+export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity }) => {
   try {
+    const payload = {
+      item_code: itemCode,
+      item_name: itemName,
+      item_group: 'Products',
+      stock_uom: uom || 'Nos',
+      is_stock_item: 1,
+      item_defaults: [
+        {
+          company: 'INEX Accessories',
+          default_warehouse: warehouse
+        }
+      ]
+    };
+
+    // If a quantity is provided, try to set it as the opening stock
+    if (quantity !== undefined && quantity !== null && quantity !== '') {
+      payload.opening_stock = parseFloat(quantity) || 0;
+      payload.valuation_rate = 0; // Usually required when setting opening stock
+      payload.standard_rate = 0;
+    }
+
     const res = await fetch(`${API_URL}/api/resource/Item`, {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify({
-        item_code: itemCode,
-        item_name: itemName,
-        item_group: 'Products',
-        stock_uom: uom || 'Nos',
-        is_stock_item: 1,
-        item_defaults: [
-          {
-            company: 'INEX Accessories',
-            default_warehouse: warehouse
-          }
-        ]
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
