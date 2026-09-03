@@ -519,7 +519,7 @@ const DayBook = () => {
       doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "normal");
       
-      const complaint = extractNote(project.notes, 'Complaint') || '-';
+      const consumption = extractNote(project.notes, 'Consumption') || '-';
       const model = project.custom_model_name || '-';
       const imei = project.custom_imei_number || '-';
       const profitStr = extractNote(project.notes, 'Profit');
@@ -545,7 +545,7 @@ const DayBook = () => {
         if (i === 0) {
           doc.text(String(model || ''), 42, y + 7, { align: 'center' });
           doc.text(String(imei || ''), 92, y + 7, { align: 'center' });
-          doc.text(String(complaint || '-'), 135, y + 7, { align: 'center' });
+          doc.text(String(consumption || '-'), 135, y + 7, { align: 'center' });
           doc.text(String(amount || ''), 175, y + 7, { align: 'center' });
         }
       }
