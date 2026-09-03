@@ -351,13 +351,34 @@ const DayBook = () => {
         await deleteSalesInvoice(invoice.name);
       }
 
-      // 3. Delete Project
-      await deleteProject(project.name);
-      toast.success("Entry and linked invoice deleted successfully!");
+      // 3. Clear DayBook specific fields instead of deleting the whole project
+      // so the Customer Details are preserved.
+      const existingNotes = project.notes || '';
+      
+      const complaint = extractNote(existingNotes, 'Complaint');
+      const passcode = extractNote(existingNotes, 'Passcode');
+      const receiver = extractNote(existingNotes, 'Receiver');
+      const technician = extractNote(existingNotes, 'Technician');
+      const source = extractNote(existingNotes, 'Source') || extractNote(existingNotes, 'Update');
+      const delivery = extractNote(existingNotes, 'Delivery');
+      const amount = extractNote(existingNotes, 'Amount');
+      const phone = extractNote(existingNotes, 'Phone');
+
+      let newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nSource: ${source}\nDelivery: ${delivery}\nAmount: ${amount}`;
+      if (phone) {
+        newNotes += `\nPhone: ${phone}`;
+      }
+
+      await updateProject(project.name, { 
+        notes: newNotes,
+        status: 'Open' // Reset status
+      });
+      
+      toast.success("DayBook entry cleared and linked invoice deleted successfully!");
       setDeleteModal({ isOpen: false, project: null });
       await loadData();
     } catch (error) {
-      toast.error(error.message || "Failed to delete entry and linked invoice.");
+      toast.error(error.message || "Failed to clear entry and linked invoice.");
     } finally {
       setIsDeleting(false);
     }
