@@ -294,13 +294,23 @@ const CustomerDetails = () => {
     const rowStatus = extractNote(p.notes, 'Status') || '🟡 Pending';
     if (filterStatus !== 'All' && rowStatus !== filterStatus) return false;
 
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+
     const nameStr = (p.project_name || '').toLowerCase();
     const phoneStr = (p.custom_phone || extractNote(p.notes, 'Phone') || '').toLowerCase();
     const modelStr = (p.custom_model_name || '').toLowerCase();
     const imeiStr = (p.custom_imei_number || '').toLowerCase();
+    const receiverStr = (p.custom_receiver || extractNote(p.notes, 'Receiver') || '').toLowerCase();
+    const technicianStr = (p.custom_technician || extractNote(p.notes, 'Technician') || '').toLowerCase();
     const statusStr = rowStatus.toLowerCase();
-    return nameStr.includes(term) || phoneStr.includes(term) || modelStr.includes(term) || imeiStr.includes(term) || statusStr.includes(term);
+    return nameStr.includes(term) || 
+           phoneStr.includes(term) || 
+           modelStr.includes(term) || 
+           imeiStr.includes(term) || 
+           receiverStr.includes(term) || 
+           technicianStr.includes(term) || 
+           statusStr.includes(term);
   });
 
   const handleInputChange = (field, value) => {
@@ -536,8 +546,8 @@ const CustomerDetails = () => {
           <input 
             type="text" 
             className="input-field" 
-            placeholder="Search by Code, Name, Phone, Model, or Status..." 
-            style={{ width: '100%', maxWidth: '350px' }}
+            placeholder="Search by Code, Name, Phone, Tech, Receiver, Status..." 
+            style={{ width: '100%', maxWidth: '380px' }}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />

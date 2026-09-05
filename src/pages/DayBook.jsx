@@ -90,10 +90,13 @@ const DayBook = () => {
     // Admin branch filter dropdown
     if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
 
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
     const nameStr = (p.project_name || '').toLowerCase();
     const modelStr = (p.custom_model_name || '').toLowerCase();
-    return nameStr.includes(term) || modelStr.includes(term);
+    const technicianStr = (extractNote(p.notes, 'Technician') || '').toLowerCase();
+    const receiverStr = (extractNote(p.notes, 'Receiver') || '').toLowerCase();
+    return nameStr.includes(term) || modelStr.includes(term) || technicianStr.includes(term) || receiverStr.includes(term);
   });
 
   useEffect(() => {
@@ -827,8 +830,8 @@ const DayBook = () => {
           <input 
             type="text" 
             className="input-field" 
-            placeholder="Search by Code, Name, or Model..." 
-            style={{ width: '100%', maxWidth: '350px' }}
+            placeholder="Search by Code, Name, Model, Tech, Receiver..." 
+            style={{ width: '100%', maxWidth: '380px' }}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
