@@ -40,7 +40,7 @@ const extractFrappeError = async (res, defaultMsg) => {
 
 export const fetchProjects = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Project?fields=["*"]&limit=1000`, {
+    const res = await fetch(`${API_URL}/api/resource/Project?fields=["*"]&limit_page_length=0&order_by=creation desc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -54,7 +54,7 @@ export const fetchProjects = async () => {
 
 export const fetchEmployees = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Employee?fields=["name","employee_name","cell_number","status"]&limit=1000`, {
+    const res = await fetch(`${API_URL}/api/resource/Employee?fields=["name","employee_name","cell_number","status"]&limit_page_length=0`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -69,7 +69,7 @@ export const fetchEmployees = async () => {
 export const fetchUsers = async () => {
   try {
     // Only fetching Branch Users - maybe filter by a role if possible, or just fetch all and filter in frontend
-    const res = await fetch(`${API_URL}/api/resource/User?fields=["name","email","first_name","username","enabled"]&limit=1000`, {
+    const res = await fetch(`${API_URL}/api/resource/User?fields=["name","email","first_name","username","enabled"]&limit_page_length=0`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -573,7 +573,7 @@ export const deletePurchaseReceipt = async (receiptId) => {
 
 export const fetchPurchaseReceipts = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit=1000`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit_page_length=0&order_by=creation desc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -596,7 +596,7 @@ export const fetchPurchaseReceipts = async () => {
 
 export const fetchSalesInvoices = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?fields=["name","project","customer","posting_date","grand_total","remarks","company"]&limit=1000`, {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?fields=["name","project","customer","posting_date","grand_total","remarks","company"]&limit_page_length=0&order_by=creation desc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
