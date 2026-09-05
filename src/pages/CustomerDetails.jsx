@@ -71,6 +71,8 @@ const CustomerDetails = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filterTechnician, setFilterTechnician] = useState('All');
+  const [filterReceiver, setFilterReceiver] = useState('All');
 
   const loadData = async () => {
     setLoading(true);
@@ -282,7 +284,7 @@ const CustomerDetails = () => {
     return match ? match[1].trim() : '';
   };
 
-  // Filter projects based on search term, branch, and status
+  // Filter projects based on search term, branch, status, receiver, and technician
   const filteredProjects = projects.filter(p => {
     // Branch Filter: Branches only see their own records. Admins see all.
     if (user?.role === 'branch' && p.company !== user?.name) return false;
@@ -294,6 +296,14 @@ const CustomerDetails = () => {
     const rowStatus = extractNote(p.notes, 'Status') || '🟡 Pending';
     if (filterStatus !== 'All' && rowStatus !== filterStatus) return false;
 
+    // Receiver Filter
+    const rowReceiver = p.custom_receiver || extractNote(p.notes, 'Receiver') || '';
+    if (filterReceiver !== 'All' && rowReceiver !== filterReceiver) return false;
+
+    // Technician Filter
+    const rowTechnician = p.custom_technician || extractNote(p.notes, 'Technician') || '';
+    if (filterTechnician !== 'All' && rowTechnician !== filterTechnician) return false;
+
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true;
 
@@ -301,8 +311,8 @@ const CustomerDetails = () => {
     const phoneStr = (p.custom_phone || extractNote(p.notes, 'Phone') || '').toLowerCase();
     const modelStr = (p.custom_model_name || '').toLowerCase();
     const imeiStr = (p.custom_imei_number || '').toLowerCase();
-    const receiverStr = (p.custom_receiver || extractNote(p.notes, 'Receiver') || '').toLowerCase();
-    const technicianStr = (p.custom_technician || extractNote(p.notes, 'Technician') || '').toLowerCase();
+    const receiverStr = rowReceiver.toLowerCase();
+    const technicianStr = rowTechnician.toLowerCase();
     const statusStr = rowStatus.toLowerCase();
     return nameStr.includes(term) || 
            phoneStr.includes(term) || 
@@ -369,8 +379,12 @@ const CustomerDetails = () => {
     setEditProjectId(null);
   };
 
-  const uniqueTechnicians = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Technician')).filter(Boolean)));
-  const uniqueReceivers = Array.from(new Set(projects.map(p => extractNote(p.notes, 'Receiver')).filter(Boolean)));
+  const visibleProjectsForDropdowns = user?.role === 'branch' 
+    ? projects.filter(p => p.company === user?.name)
+    : (filterBranch !== 'All' ? projects.filter(p => p.company === filterBranch) : projects);
+
+  const uniqueTechnicians = Array.from(new Set(visibleProjectsForDropdowns.map(p => p.custom_technician || extractNote(p.notes, 'Technician')).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const uniqueReceivers = Array.from(new Set(visibleProjectsForDropdowns.map(p => p.custom_receiver || extractNote(p.notes, 'Receiver')).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const uniqueModels = Array.from(new Set(projects.map(p => p.custom_model_name).filter(Boolean)));
 
   return (
@@ -518,11 +532,11 @@ const CustomerDetails = () => {
       )}
 
       <div className="table-container">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)', flexWrap: 'wrap', alignItems: 'center' }}>
           {user?.role === 'admin' && (
             <select 
               className="input-field" 
-              style={{ width: 'auto', minWidth: '150px' }}
+              style={{ width: 'auto', minWidth: '140px' }}
               value={filterBranch}
               onChange={e => setFilterBranch(e.target.value)}
             >
@@ -534,7 +548,7 @@ const CustomerDetails = () => {
           )}
           <select 
             className="input-field" 
-            style={{ width: 'auto', minWidth: '160px' }}
+            style={{ width: 'auto', minWidth: '140px' }}
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
           >
@@ -543,14 +557,52 @@ const CustomerDetails = () => {
               <option key={i} value={opt}>{opt}</option>
             ))}
           </select>
+          <select 
+            className="input-field" 
+            style={{ width: 'auto', minWidth: '140px' }}
+            value={filterReceiver}
+            onChange={e => setFilterReceiver(e.target.value)}
+          >
+            <option value="All">All Receivers</option>
+            {uniqueReceivers.map((rec, i) => (
+              <option key={i} value={rec}>{rec}</option>
+            ))}
+          </select>
+          <select 
+            className="input-field" 
+            style={{ width: 'auto', minWidth: '140px' }}
+            value={filterTechnician}
+            onChange={e => setFilterTechnician(e.target.value)}
+          >
+            <option value="All">All Technicians</option>
+            {uniqueTechnicians.map((tech, i) => (
+              <option key={i} value={tech}>{tech}</option>
+            ))}
+          </select>
           <input 
             type="text" 
             className="input-field" 
             placeholder="Search by Code, Name, Phone, Tech, Receiver, Status..." 
-            style={{ width: '100%', maxWidth: '380px' }}
+            style={{ width: '100%', maxWidth: '320px' }}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
+          {(filterStatus !== 'All' || filterReceiver !== 'All' || filterTechnician !== 'All' || (user?.role === 'admin' && filterBranch !== 'All') || searchTerm) && (
+            <button
+              className="btn"
+              style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer', borderRadius: '8px' }}
+              onClick={() => {
+                setFilterStatus('All');
+                setFilterReceiver('All');
+                setFilterTechnician('All');
+                if (user?.role === 'admin') setFilterBranch('All');
+                setSearchTerm('');
+              }}
+              title="Reset all filters"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
         {loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>Loading live data from Frappe...</div>
