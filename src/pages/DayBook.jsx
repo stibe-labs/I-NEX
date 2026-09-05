@@ -47,6 +47,7 @@ const DayBook = () => {
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
+  const [expandedConsumption, setExpandedConsumption] = useState({});
 
   const loadData = async () => {
     setLoading(true);
@@ -843,10 +844,10 @@ const DayBook = () => {
             <thead>
               <tr>
                 <th>SL. NO</th>
-                <th>CUSTOMER NAME</th>
+                <th style={{ minWidth: '150px', maxWidth: '220px', whiteSpace: 'normal' }}>CUSTOMER NAME</th>
                 <th>JOB CARD</th>
-                <th>MODEL.NAME</th>
-                <th>CONSUMPTION</th>
+                <th style={{ minWidth: '120px', maxWidth: '180px', whiteSpace: 'normal' }}>MODEL.NAME</th>
+                <th style={{ minWidth: '200px', maxWidth: '280px', whiteSpace: 'normal' }}>CONSUMPTION</th>
                 <th>WARRANTY</th>
                 <th>CASH</th>
                 <th>BANK</th>
@@ -882,10 +883,56 @@ const DayBook = () => {
                 return (
                   <tr key={p.name || i}>
                     <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{p.name || '-'}</td>
-                    <td style={{ fontWeight: 600 }}>{name}</td>
+                    <td style={{ fontWeight: 600, maxWidth: '220px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{name}</td>
                     <td>{code}</td>
-                    <td>{p.custom_model_name || '-'}</td>
-                    <td>{consumption}</td>
+                    <td style={{ maxWidth: '180px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{p.custom_model_name || '-'}</td>
+                    <td style={{ 
+                      maxWidth: '280px', 
+                      minWidth: '200px', 
+                      whiteSpace: 'normal', 
+                      verticalAlign: 'middle',
+                      paddingTop: '0.6rem',
+                      paddingBottom: '0.6rem'
+                    }}>
+                      <div 
+                        style={{
+                          maxWidth: '280px',
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          lineHeight: '1.35',
+                          fontSize: '0.85rem',
+                          display: '-webkit-box',
+                          WebkitLineClamp: expandedConsumption[p.name] ? 'unset' : 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: expandedConsumption[p.name] ? 'visible' : 'hidden',
+                          textOverflow: 'ellipsis',
+                          cursor: typeof consumption === 'string' && consumption.length > 40 ? 'pointer' : 'default'
+                        }}
+                        title={typeof consumption === 'string' ? `${consumption}\n(Click to expand/collapse)` : undefined}
+                        onClick={() => {
+                          if (typeof consumption === 'string' && consumption.length > 40) {
+                            setExpandedConsumption(prev => ({ ...prev, [p.name]: !prev[p.name] }));
+                          }
+                        }}
+                      >
+                        {consumption}
+                      </div>
+                      {typeof consumption === 'string' && consumption.length > 55 && (
+                        <div 
+                          onClick={() => setExpandedConsumption(prev => ({ ...prev, [p.name]: !prev[p.name] }))}
+                          style={{
+                            fontSize: '0.72rem',
+                            color: 'var(--primary-color)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            marginTop: '2px',
+                            userSelect: 'none'
+                          }}
+                        >
+                          {expandedConsumption[p.name] ? '▲ Show less' : '▼ Show more'}
+                        </div>
+                      )}
+                    </td>
                     <td>{warranty}</td>
                     <td>{cash}</td>
                     <td>{bank}</td>

@@ -646,8 +646,22 @@ const CustomerDetails = () => {
                     <td style={{ fontWeight: 600 }}>{name}</td>
                     <td>{p.custom_phone || extractNote(p.notes, 'Phone') || '-'}</td>
                     <td>{p.custom_model_name || '-'}</td>
-                    <td>{p.custom_imei_number || '-'}</td>
-                    <td>{extractNote(p.notes, 'Complaint') || '-'}</td>
+                    <td style={{ maxWidth: '220px', minWidth: '140px', whiteSpace: 'normal', verticalAlign: 'middle' }}>
+                      <div style={{
+                        maxWidth: '220px',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: '1.35',
+                        fontSize: '0.85rem',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }} title={extractNote(p.notes, 'Complaint') || undefined}>
+                        {extractNote(p.notes, 'Complaint') || '-'}
+                      </div>
+                    </td>
                     <td>{extractNote(p.notes, 'Passcode') || '-'}</td>
                     <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{extractNote(p.notes, 'Amount') || p.total_billed_amount || '-'}</td>
                     <td>{extractNote(p.notes, 'Receiver') || '-'}</td>
