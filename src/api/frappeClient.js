@@ -415,7 +415,7 @@ export const checkSalesInvoiceExists = async (projectId) => {
 
 export const getLinkedSalesInvoices = async (projectId) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&fields=["name","docstatus"]&limit=100`, {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?filters=[["project","=","${encodeURIComponent(projectId)}"]]&fields=["name","docstatus"]&limit_page_length=0`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -627,7 +627,7 @@ export const fetchSalesInvoiceDetails = async (invoiceName) => {
 // Fetch Payment Entries linked to a Sales Invoice
 export const fetchPaymentEntriesForInvoice = async (invoiceName) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Payment Entry?filters=[["Payment Entry Reference","reference_name","=","${encodeURIComponent(invoiceName)}"]]&fields=["name","mode_of_payment","paid_amount","posting_date"]&limit=100`, {
+    const res = await fetch(`${API_URL}/api/resource/Payment Entry?filters=[["Payment Entry Reference","reference_name","=","${encodeURIComponent(invoiceName)}"]]&fields=["name","mode_of_payment","paid_amount","posting_date"]&limit_page_length=0`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -645,7 +645,7 @@ export const enrichProjectsWithFrappeData = async (projects) => {
   // Step 1: Fetch ALL Sales Invoices and Payment Entries in bulk (extremely fast)
   const [allSalesInvoices, allPayments] = await Promise.all([
     fetchSalesInvoices(),
-    fetch(`${API_URL}/api/resource/Payment Entry?fields=["name","mode_of_payment","paid_amount","project"]&limit=5000`, { headers: getHeaders() }).then(r => r.json()).then(d => d.data || []).catch(() => [])
+    fetch(`${API_URL}/api/resource/Payment Entry?fields=["name","mode_of_payment","paid_amount","project"]&limit_page_length=0`, { headers: getHeaders() }).then(r => r.json()).then(d => d.data || []).catch(() => [])
   ]);
   
   // Group invoices by project
@@ -723,7 +723,7 @@ export const getINEXBranchConfig = () => INEX_BRANCH_CONFIG;
 
 export const fetchINEXItems = async (prefix) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Item?filters=[["item_code","like","${prefix}%"]]&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]&limit=1000&order_by=item_code asc`, {
+    const res = await fetch(`${API_URL}/api/resource/Item?filters=[["item_code","like","${prefix}%"]]&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]&limit_page_length=0&order_by=item_code asc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
