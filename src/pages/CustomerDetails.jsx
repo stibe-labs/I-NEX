@@ -5,6 +5,40 @@ import { useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
+export const STATUS_OPTIONS = [
+  '🟡 Pending',
+  '🔵 In Progress',
+  '🟣 Waiting for Parts',
+  '🟠 Follow-up',
+  '🔴 On Hold',
+  '🟢 Ready for Pickup',
+  '📦 Returned',
+  '✅ Finished'
+];
+
+export const getStatusBadgeStyle = (status) => {
+  switch (status) {
+    case '🟡 Pending':
+      return { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' };
+    case '🔵 In Progress':
+      return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
+    case '🟣 Waiting for Parts':
+      return { background: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe' };
+    case '🟠 Follow-up':
+      return { background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' };
+    case '🔴 On Hold':
+      return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' };
+    case '🟢 Ready for Pickup':
+      return { background: '#dcfce7', color: '#166534', border: '1px solid #86efac' };
+    case '📦 Returned':
+      return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' };
+    case '✅ Finished':
+      return { background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' };
+    default:
+      return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb' };
+  }
+};
+
 const CustomerDetails = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
@@ -30,12 +64,13 @@ const CustomerDetails = () => {
   const [formData, setFormData] = useState({
     code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
     complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-    source: '', delivery: '', branch: ''
+    source: '', delivery: '', branch: '', status: '🟡 Pending'
   });
 
-  // Search State
+  // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
 
   const loadData = async () => {
     setLoading(true);
@@ -109,7 +144,7 @@ const CustomerDetails = () => {
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
         // Pack the rest into notes
-        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}${notesPhoneStr}`
+        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}\nStatus: ${formData.status || '🟡 Pending'}${notesPhoneStr}`
       };
       
       let actualEditProjectId = editProjectId;
@@ -158,7 +193,7 @@ const CustomerDetails = () => {
       setFormData({
         code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-        source: '', delivery: '', branch: ''
+        source: '', delivery: '', branch: '', status: '🟡 Pending'
       });
     } catch (e) {
       toast.error(e.message || "Failed to save to Frappe. See console.");
@@ -198,12 +233,45 @@ const CustomerDetails = () => {
       technician: extractNote(p.notes, 'Technician') || '',
       source: extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '',
       delivery: extractNote(p.notes, 'Delivery') || '',
-      branch: p.company || ''
+      branch: p.company || '',
+      status: extractNote(p.notes, 'Status') || '🟡 Pending'
     });
     setEditProjectId(p.name);
     setIsAdding(true);
     setOpenMenuId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleQuickStatusChange = async (project, newStatus) => {
+    const currentNotes = project.notes || '';
+    let updatedNotes = '';
+    const plainText = currentNotes.replace(/<[^>]*>?/gm, '\n');
+    if (/Status:[ \t]*(.*)/i.test(plainText)) {
+      updatedNotes = plainText.replace(/Status:[ \t]*(.*)/i, `Status: ${newStatus}`);
+    } else {
+      updatedNotes = plainText ? `${plainText.trim()}\nStatus: ${newStatus}` : `Status: ${newStatus}`;
+    }
+
+    // Optimistically update UI
+    setProjects(prevProjects =>
+      prevProjects.map(p =>
+        p.name === project.name ? { ...p, notes: updatedNotes } : p
+      )
+    );
+
+    try {
+      await updateProject(project.name, { notes: updatedNotes });
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to update status');
+      // Rollback on error
+      setProjects(prevProjects =>
+        prevProjects.map(p =>
+          p.name === project.name ? { ...p, notes: currentNotes } : p
+        )
+      );
+    }
   };
 
   // Helper to parse notes for UI display if needed (simplified for now)
@@ -214,7 +282,7 @@ const CustomerDetails = () => {
     return match ? match[1].trim() : '';
   };
 
-  // Filter projects based on search term and user role
+  // Filter projects based on search term, branch, and status
   const filteredProjects = projects.filter(p => {
     // Branch Filter: Branches only see their own records. Admins see all.
     if (user?.role === 'branch' && p.company !== user?.name) return false;
@@ -222,12 +290,17 @@ const CustomerDetails = () => {
     // Admin branch filter dropdown
     if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
 
+    // Status Filter
+    const rowStatus = extractNote(p.notes, 'Status') || '🟡 Pending';
+    if (filterStatus !== 'All' && rowStatus !== filterStatus) return false;
+
     const term = searchTerm.toLowerCase();
     const nameStr = (p.project_name || '').toLowerCase();
     const phoneStr = (p.custom_phone || extractNote(p.notes, 'Phone') || '').toLowerCase();
     const modelStr = (p.custom_model_name || '').toLowerCase();
     const imeiStr = (p.custom_imei_number || '').toLowerCase();
-    return nameStr.includes(term) || phoneStr.includes(term) || modelStr.includes(term) || imeiStr.includes(term);
+    const statusStr = rowStatus.toLowerCase();
+    return nameStr.includes(term) || phoneStr.includes(term) || modelStr.includes(term) || imeiStr.includes(term) || statusStr.includes(term);
   });
 
   const handleInputChange = (field, value) => {
@@ -257,12 +330,14 @@ const CustomerDetails = () => {
           next.phone_no = mPhone || '+91-';
           next.model = match.custom_model_name || '';
           next.imei_no = match.custom_imei_number || '';
+          next.status = extractNote(match.notes, 'Status') || '🟡 Pending';
         } else {
           if (field === 'code') {
             next.name = '';
             next.phone_no = '+91-';
             next.model = '';
             next.imei_no = '';
+            next.status = '🟡 Pending';
           }
         }
       }
@@ -278,7 +353,8 @@ const CustomerDetails = () => {
     }
     setFormData({
       code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
-      complaint: '', passcode: '', amount: '', receiver: '', technician: '', source: '', delivery: '', branch: initialBranch
+      complaint: '', passcode: '', amount: '', receiver: '', technician: '', source: '', delivery: '', branch: initialBranch,
+      status: '🟡 Pending'
     });
     setEditProjectId(null);
   };
@@ -305,7 +381,8 @@ const CustomerDetails = () => {
             setFormData({
               code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
               complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-              source: '', delivery: '', branch: initialBranch
+              source: '', delivery: '', branch: initialBranch,
+              status: '🟡 Pending'
             });
             setEditProjectId(null);
             setIsAdding(true);
@@ -390,6 +467,14 @@ const CustomerDetails = () => {
                 <option value="Shop">Shop</option>
               </select>
             </div>
+            <div className="input-group">
+              <label>Status</label>
+              <select className="input-field" value={formData.status} onChange={e => handleInputChange('status', e.target.value)}>
+                {STATUS_OPTIONS.map((opt, i) => (
+                  <option key={i} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <datalist id="technician-list">
@@ -423,7 +508,7 @@ const CustomerDetails = () => {
       )}
 
       <div className="table-container">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
           {user?.role === 'admin' && (
             <select 
               className="input-field" 
@@ -437,10 +522,21 @@ const CustomerDetails = () => {
               ))}
             </select>
           )}
+          <select 
+            className="input-field" 
+            style={{ width: 'auto', minWidth: '160px' }}
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+          >
+            <option value="All">All Statuses</option>
+            {STATUS_OPTIONS.map((opt, i) => (
+              <option key={i} value={opt}>{opt}</option>
+            ))}
+          </select>
           <input 
             type="text" 
             className="input-field" 
-            placeholder="Search by Code, Name, Phone, or Model..." 
+            placeholder="Search by Code, Name, Phone, Model, or Status..." 
             style={{ width: '100%', maxWidth: '350px' }}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -465,6 +561,7 @@ const CustomerDetails = () => {
                 <th>TECHNICIAN</th>
                 <th>SOURCE</th>
                 <th>DELIVERY</th>
+                <th>STATUS</th>
                 <th style={{ width: '50px', textAlign: 'center' }}>ACT.</th>
               </tr>
             </thead>
@@ -495,6 +592,56 @@ const CustomerDetails = () => {
                     <td>{extractNote(p.notes, 'Technician') || '-'}</td>
                     <td>{extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '-'}</td>
                     <td>{extractNote(p.notes, 'Delivery') || '-'}</td>
+                    <td>
+                      {(() => {
+                        const currentStatus = extractNote(p.notes, 'Status') || '🟡 Pending';
+                        const badgeStyle = getStatusBadgeStyle(currentStatus);
+                        return (
+                          <div style={{ display: 'inline-block', position: 'relative' }}>
+                            <select
+                              value={currentStatus}
+                              onChange={(e) => handleQuickStatusChange(p, e.target.value)}
+                              style={{
+                                ...badgeStyle,
+                                padding: '0.3rem 0.6rem',
+                                borderRadius: '20px',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                appearance: 'none',
+                                WebkitAppearance: 'none',
+                                MozAppearance: 'none',
+                                textAlign: 'center',
+                                paddingRight: '1.2rem',
+                                backgroundPosition: 'right 0.4rem center',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%20viewBox%3D%220%200%2010%206%22%3E%3Cpath%20fill%3D%22%234b5563%22%20d%3D%22M0%200l5%205%205-5z%22%2F%3E%3C%2Fsvg%3E")`,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s ease',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title="Click to quickly change status"
+                            >
+                              {STATUS_OPTIONS.map((opt, optIdx) => (
+                                <option 
+                                  key={optIdx} 
+                                  value={opt}
+                                  style={{
+                                    background: '#ffffff',
+                                    color: '#1f2937',
+                                    fontWeight: '500',
+                                    padding: '6px'
+                                  }}
+                                >
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td style={{ position: 'relative' }}>
                       <button 
                         className="btn-icon" 
@@ -539,7 +686,7 @@ const CustomerDetails = () => {
               })}
               {filteredProjects.length === 0 && (
                 <tr>
-                  <td colSpan="14" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
+                  <td colSpan="15" style={{ textAlign: 'center', padding: '2rem' }}>No records found matching your search.</td>
                 </tr>
               )}
             </tbody>
