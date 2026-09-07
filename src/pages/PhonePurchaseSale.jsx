@@ -84,11 +84,45 @@ const PhonePurchaseSale = () => {
     ['PROJ-0792', 'PROJ-0793', 'PROJ-0794'].includes(p.name)
   );
 
+  // Helper to map project to corresponding branch
+  const getBranchFromProject = (project) => {
+    if (!project) return 'INEX';
+    if (project.company && project.company !== 'INEX') return project.company;
+    const name = project.project_name || '';
+    if (/kaloor/i.test(name) || project.name === 'PROJ-0792') return 'INEX Kaloor';
+    if (/perumbavoor/i.test(name) || project.name === 'PROJ-0793') return 'INEX Perumbavoor';
+    if (/thodupuzha/i.test(name) || project.name === 'PROJ-0794') return 'INEX Thodupuzha';
+    
+    const match = name.match(/phone purchase and sales\s+(.+)/i);
+    if (match && match[1]) {
+      const bName = match[1].trim();
+      return bName.toLowerCase().startsWith('inex') ? bName : `INEX ${bName}`;
+    }
+    return project.company || 'INEX';
+  };
+
+  // Helper to resolve branch for any purchase/sale record
+  const getBranchFromRecord = (record) => {
+    const recordProject = projects.find(p => p.name === record.project);
+    if (recordProject) {
+      return getBranchFromProject(recordProject);
+    }
+    const projId = (record?.project || '').toUpperCase();
+    if (projId === 'PROJ-0792') return 'INEX Kaloor';
+    if (projId === 'PROJ-0793') return 'INEX Perumbavoor';
+    if (projId === 'PROJ-0794') return 'INEX Thodupuzha';
+    if (record.company && record.company !== 'INEX') return record.company;
+    return 'INEX';
+  };
+
   // Helper to find branch project for branch portal user
   const getUserBranchProject = () => {
+    const userBranch = user?.name || '';
+    const branchKeyword = userBranch.toLowerCase().replace(/inex\s*/g, '').trim();
     return phoneProjects.find(p => 
-      p.company === user?.name || 
-      (p.project_name && p.project_name.toLowerCase().includes((user?.name || '').toLowerCase().replace('inex ', '')))
+      p.company === userBranch || 
+      getBranchFromProject(p).toLowerCase() === userBranch.toLowerCase() ||
+      (branchKeyword && p.project_name && p.project_name.toLowerCase().includes(branchKeyword))
     );
   };
 
@@ -272,17 +306,30 @@ const PhonePurchaseSale = () => {
 
       // Role filtering for branch users
       if (user?.role === 'branch') {
-        const branchMatch = recordProject 
-          ? (recordProject.company === user?.name || record.company === user?.name) 
-          : record.company === user?.name;
+        const userBranch = user?.name || '';
+        const userBranchKeyword = userBranch.toLowerCase().replace(/inex\s*/g, '').trim();
+        const recordBranch = getBranchFromRecord(record);
+        
+        const branchMatch = 
+          recordBranch.toLowerCase() === userBranch.toLowerCase() ||
+          (userBranchKeyword && recordBranch.toLowerCase().includes(userBranchKeyword)) ||
+          (record.company && record.company.toLowerCase() === userBranch.toLowerCase()) ||
+          (recordProject?.company && recordProject.company.toLowerCase() === userBranch.toLowerCase());
+
         if (!branchMatch) return false;
       }
       
       // Admin branch filter
       if (user?.role === 'admin' && filterBranch !== 'All') {
-        const branchMatch = recordProject 
-          ? (recordProject.company === filterBranch || record.company === filterBranch) 
-          : record.company === filterBranch;
+        const filterKeyword = filterBranch.toLowerCase().replace(/inex\s*/g, '').trim();
+        const recordBranch = getBranchFromRecord(record);
+
+        const branchMatch = 
+          recordBranch.toLowerCase() === filterBranch.toLowerCase() ||
+          (filterKeyword && recordBranch.toLowerCase().includes(filterKeyword)) ||
+          (record.company && record.company.toLowerCase() === filterBranch.toLowerCase()) ||
+          (recordProject?.company && recordProject.company.toLowerCase() === filterBranch.toLowerCase());
+
         if (!branchMatch) return false;
       }
 
@@ -297,7 +344,9 @@ const PhonePurchaseSale = () => {
   };
 
   const displayRecords = filterRecords(activeTab === 'purchases' ? purchases : sales);
-  const availableBranchFilters = Array.from(new Set(phoneProjects.map(p => p.company))).filter(Boolean);
+  const defaultBranches = ['INEX Kaloor', 'INEX Perumbavoor', 'INEX Thodupuzha'];
+  const projectBranches = phoneProjects.map(p => getBranchFromProject(p));
+  const availableBranchFilters = Array.from(new Set([...defaultBranches, ...projectBranches])).filter(Boolean);
 
   return (
     <div>
@@ -362,7 +411,7 @@ const PhonePurchaseSale = () => {
                 <input 
                   type="text" 
                   className="input-field" 
-                  value={user?.name || 'Loading Branch...'} 
+                  value={getUserBranchProject()?.project_name || user?.name || 'Loading Branch...'} 
                   readOnly 
                   style={{ background: '#f8f9fa', cursor: 'not-allowed', color: '#666' }} 
                 />
