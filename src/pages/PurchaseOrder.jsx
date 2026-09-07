@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createPurchaseReceipt, fetchPurchaseReceipts, ensureSupplier, ensureItem, createProject, updatePurchaseReceipt, deletePurchaseReceipt } from '../api/frappeClient';
+import { fetchProjects, createPurchaseReceipt, fetchPurchaseReceipts, ensureSupplier, ensureItem, createProject, updatePurchaseReceipt, deletePurchaseReceipt, createPurchaseInvoice, updatePurchaseInvoice, deletePurchaseInvoice } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Trash2, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,6 +14,7 @@ const PurchaseOrder = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editInvoiceId, setEditInvoiceId] = useState(null);
+  const [editPiId, setEditPiId] = useState(null);
   
   // Note: We don't implement full edit/delete for Frappe invoices here 
   // as Frappe handles submitted invoices strictly. But we add the UI structure.
@@ -166,16 +167,116 @@ const PurchaseOrder = () => {
       };
 
       if (editInvoiceId) {
-        await updatePurchaseReceipt(editInvoiceId, invoiceData);
+        // 1. Update Purchase Receipt
+        await updatePurchaseReceipt(editInvoiceId, {
+          ...invoiceData,
+          remarks: editPiId ? `${packedRemarks}\nPurchase Invoice: ${editPiId}` : packedRemarks
+        });
+
+        // 2. Update or Create Purchase Invoice
+        if (editPiId) {
+          await updatePurchaseInvoice(editPiId, {
+            supplier: supplierName,
+            project: projectId,
+            company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+            posting_date: formData.date,
+            due_date: formData.date,
+            items: [
+              {
+                item_code: itemCode,
+                qty: qty,
+                rate: rate,
+                description: formData.item_description || 'Purchase Item',
+                project: projectId,
+                purchase_receipt: editInvoiceId
+              }
+            ],
+            remarks: `${packedRemarks}\nPurchase Receipt: ${editInvoiceId}`
+          });
+        } else {
+          // If no linked Purchase Invoice exists yet (e.g. legacy entry), create one now
+          try {
+            const piDoc = await createPurchaseInvoice({
+              supplier: supplierName,
+              project: projectId,
+              company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+              posting_date: formData.date,
+              due_date: formData.date,
+              items: [
+                {
+                  item_code: itemCode,
+                  qty: qty,
+                  rate: rate,
+                  description: formData.item_description || 'Purchase Item',
+                  project: projectId,
+                  purchase_receipt: editInvoiceId
+                }
+              ],
+              remarks: `${packedRemarks}\nPurchase Receipt: ${editInvoiceId}`
+            });
+            if (piDoc?.name) {
+              await updatePurchaseReceipt(editInvoiceId, {
+                remarks: `${packedRemarks}\nPurchase Invoice: ${piDoc.name}`
+              });
+            }
+          } catch (piErr) {
+            console.warn("Failed to create linked Purchase Invoice during update:", piErr);
+          }
+        }
         toast.success("Purchase Entry Updated!");
       } else {
-        await createPurchaseReceipt(invoiceData);
+        // 1. Create Purchase Receipt
+        const createdReceipt = await createPurchaseReceipt(invoiceData);
+        const receiptName = createdReceipt?.name;
+
+        // 2. Create Purchase Invoice linked to Purchase Receipt
+        try {
+          const piData = {
+            supplier: supplierName,
+            project: projectId,
+            company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+            posting_date: formData.date,
+            due_date: formData.date,
+            items: [
+              {
+                item_code: itemCode,
+                qty: qty,
+                rate: rate,
+                description: formData.item_description || 'Purchase Item',
+                project: projectId,
+                ...(receiptName ? { purchase_receipt: receiptName } : {})
+              }
+            ],
+            remarks: receiptName 
+              ? `${packedRemarks}\nPurchase Receipt: ${receiptName}` 
+              : packedRemarks
+          };
+
+          const createdInvoice = await createPurchaseInvoice(piData);
+
+          // 3. Update Purchase Receipt remarks to reference the Purchase Invoice
+          if (receiptName && createdInvoice?.name) {
+            try {
+              await updatePurchaseReceipt(receiptName, {
+                remarks: `${packedRemarks}\nPurchase Invoice: ${createdInvoice.name}`
+              });
+            } catch (prUpdErr) {
+              console.warn("Could not update PR with PI reference:", prUpdErr);
+            }
+          }
+        } catch (piErr) {
+          console.error("Error creating linked Purchase Invoice:", piErr);
+          toast.error("Purchase Receipt created, but failed to create Purchase Invoice: " + (piErr.message || "Unknown error"));
+          throw piErr;
+        }
+
         toast.success("Purchase Entry Saved to Frappe!");
       }
       
       await loadData();
       setIsAdding(false);
       setEditInvoiceId(null);
+      setEditPiId(null);
       handleClear();
     } catch (e) {
       toast.error(e.message || "Failed to save Purchase Entry");
@@ -215,14 +316,27 @@ const PurchaseOrder = () => {
       branch: invoice.company || ''
     });
     setEditInvoiceId(invoice.name);
+    setEditPiId(extractNote(invoice.remarks, 'Purchase Invoice') || null);
     setIsAdding(true);
     setOpenMenuId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (invoiceId) => {
+  const handleDelete = async (invoice) => {
     if (window.confirm("Are you sure you want to delete this purchase entry?")) {
       try {
+        const invoiceId = typeof invoice === 'string' ? invoice : invoice.name;
+        const invObj = typeof invoice === 'object' ? invoice : purchases.find(p => p.name === invoiceId);
+        const linkedPiId = invObj ? extractNote(invObj.remarks, 'Purchase Invoice') : null;
+
+        if (linkedPiId) {
+          try {
+            await deletePurchaseInvoice(linkedPiId);
+          } catch (piErr) {
+            console.warn("Could not delete linked Purchase Invoice:", piErr);
+          }
+        }
+
         await deletePurchaseReceipt(invoiceId);
         toast.success("Entry deleted successfully!");
         setOpenMenuId(null);
@@ -512,7 +626,7 @@ const PurchaseOrder = () => {
                             <Download size={14} /> Download PDF
                           </button>
                           <button 
-                            onClick={() => handleDelete(p.name)}
+                            onClick={() => handleDelete(p)}
                             style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
                           >
                             <Trash2 size={14} /> Delete
