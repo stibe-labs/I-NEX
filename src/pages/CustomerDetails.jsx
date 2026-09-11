@@ -39,6 +39,14 @@ export const getStatusBadgeStyle = (status) => {
   }
 };
 
+const getTodayDate = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const CustomerDetails = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
@@ -62,6 +70,7 @@ const CustomerDetails = () => {
   
   // Local form state
   const [formData, setFormData] = useState({
+    date: getTodayDate(),
     code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
     complaint: '', passcode: '', amount: '', receiver: '', technician: '',
     source: '', delivery: '', branch: '', status: '🟡 Pending'
@@ -142,11 +151,12 @@ const CustomerDetails = () => {
         company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
         // We omit status here and add it only for new projects below
         // status: 'Open',
+        expected_start_date: formData.date || undefined,
         custom_phone: phoneToSave,
         custom_model_name: formData.model,
         custom_imei_number: formData.imei_no,
         // Pack the rest into notes
-        notes: `Complaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}\nStatus: ${formData.status || '🟡 Pending'}${notesPhoneStr}`
+        notes: `Date: ${formData.date || ''}\nComplaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}\nStatus: ${formData.status || '🟡 Pending'}${notesPhoneStr}`
       };
       
       let actualEditProjectId = editProjectId;
@@ -193,6 +203,7 @@ const CustomerDetails = () => {
       setIsAdding(false);
       setEditProjectId(null);
       setFormData({
+        date: getTodayDate(),
         code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
         source: '', delivery: '', branch: '', status: '🟡 Pending'
@@ -221,8 +232,10 @@ const CustomerDetails = () => {
     const nameParts = (p.project_name || '').trim().split(/\s+/);
     const code = nameParts[0] || '';
     const name = nameParts.slice(1).join(' ') || '';
+    const rawDate = p.expected_start_date || extractNote(p.notes, 'Date') || (p.creation ? p.creation.split(' ')[0] : getTodayDate());
     
     setFormData({
+      date: rawDate,
       code: code,
       name: name,
       phone_no: p.custom_phone || extractNote(p.notes, 'Phone') || '+91-',
@@ -345,7 +358,9 @@ const CustomerDetails = () => {
           const nameParts = (match.project_name || '').trim().split(/\s+/);
           const name = nameParts.slice(1).join(' ') || '';
           const mPhone = match.custom_phone || extractNote(match.notes, 'Phone');
+          const mDate = match.expected_start_date || extractNote(match.notes, 'Date') || (match.creation ? match.creation.split(' ')[0] : '');
           
+          if (mDate) next.date = mDate;
           next.name = name;
           next.phone_no = mPhone || '+91-';
           next.model = match.custom_model_name || '';
@@ -353,6 +368,7 @@ const CustomerDetails = () => {
           next.status = extractNote(match.notes, 'Status') || '🟡 Pending';
         } else {
           if (field === 'code') {
+            next.date = getTodayDate();
             next.name = '';
             next.phone_no = '+91-';
             next.model = '';
@@ -372,6 +388,7 @@ const CustomerDetails = () => {
       nextCode = getNextJobCardCode(initialBranch, projects);
     }
     setFormData({
+      date: getTodayDate(),
       code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
       complaint: '', passcode: '', amount: '', receiver: '', technician: '', source: '', delivery: '', branch: initialBranch,
       status: '🟡 Pending'
@@ -403,6 +420,7 @@ const CustomerDetails = () => {
                nextCode = getNextJobCardCode(initialBranch, projects);
             }
             setFormData({
+              date: getTodayDate(),
               code: nextCode, name: '', phone_no: '+91-', model: '', imei_no: '',
               complaint: '', passcode: '', amount: '', receiver: '', technician: '',
               source: '', delivery: '', branch: initialBranch,
@@ -419,8 +437,18 @@ const CustomerDetails = () => {
 
       {isAdding && (
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>New Customer Detail</h3>
+          <h3 style={{ marginBottom: '1.5rem' }}>{editProjectId ? 'Edit Customer Detail' : 'New Customer Detail'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div className="input-group">
+              <label>Date</label>
+              <input 
+                type="date" 
+                className="input-field" 
+                value={formData.date || getTodayDate()} 
+                onChange={e => handleInputChange('date', e.target.value)} 
+                required 
+              />
+            </div>
             {user?.role === 'admin' && (
               <div className="input-group">
                 <label>Branch</label>
@@ -635,9 +663,18 @@ const CustomerDetails = () => {
                 const code = nameParts[0] || '';
                 const name = nameParts.slice(1).join(' ') || '';
                 
-                // Format Date from Frappe creation field
-                const dateObj = new Date(p.creation);
-                const dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                // Format Date from expected_start_date, notes Date, or Frappe creation field
+                const rawDate = p.expected_start_date || extractNote(p.notes, 'Date') || p.creation;
+                let dateString = '-';
+                if (rawDate) {
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+                    const [y, m, d] = rawDate.split('-');
+                    dateString = `${d}/${m}/${y}`;
+                  } else {
+                    const dateObj = new Date(rawDate);
+                    dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                  }
+                }
 
                 return (
                   <tr key={p.name || i}>

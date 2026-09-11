@@ -37,8 +37,17 @@ const DayBook = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getTodayDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Local form state
   const [formData, setFormData] = useState({
+    date: getTodayDate(),
     sl_no: '', customer_name: '', job_card: '', model_name: '',
     consumption: '', warranty: '', cash: '', bank: '', credit: '',
     cost: '', profit: '', branch: '', create_additional_invoice: false
@@ -199,12 +208,14 @@ const DayBook = () => {
       const source = extractNote(existingNotes, 'Source') || extractNote(existingNotes, 'Update');
       const delivery = extractNote(existingNotes, 'Delivery');
       
-      const newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nSource: ${source}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}\nCost: ${formData.cost}\nProfit: ${formData.profit}`;
+      const dateNote = formData.date ? `Date: ${formData.date}\n` : '';
+      const newNotes = `${dateNote}Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nSource: ${source}\nDelivery: ${delivery}\nConsumption: ${formData.consumption}\nWarranty: ${formData.warranty}\nCash: ${formData.cash}\nBank: ${formData.bank}\nCredit: ${formData.credit}\nCost: ${formData.cost}\nProfit: ${formData.profit}`;
 
       const projectData = {
         project_name: projectName,
         company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
         status: 'Completed', // Once a Day Book sale is added, status is Completed
+        expected_start_date: formData.date || undefined,
         custom_model_name: formData.model_name,
         notes: newNotes
       };
@@ -265,8 +276,9 @@ const DayBook = () => {
             customer: custName,
             project: savedProjectId,
             company: projectData.company,
+            posting_date: formData.date || undefined,
             items: invoiceItems,
-            remarks: `Automatically generated from Day Book Entry.\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}\n\nCustomer Details:\nPhone: ${phone || 'N/A'}\nIMEI: ${imei || 'N/A'}\nComplaint: ${complaint || 'N/A'}\nPasscode: ${passcode || 'N/A'}\nTechnician: ${technician || 'N/A'}\nReceiver: ${receiver || 'N/A'}\nSource: ${source || 'N/A'}\nDelivery: ${delivery || 'N/A'}`
+            remarks: `Automatically generated from Day Book Entry.\nDate: ${formData.date || 'N/A'}\nCash: ${formData.cash || 0}, Bank: ${formData.bank || 0}, Credit: ${formData.credit || 0}\nCost: ${formData.cost || 0}, Profit: ${formData.profit || 0}\n\nCustomer Details:\nPhone: ${phone || 'N/A'}\nIMEI: ${imei || 'N/A'}\nComplaint: ${complaint || 'N/A'}\nPasscode: ${passcode || 'N/A'}\nTechnician: ${technician || 'N/A'}\nReceiver: ${receiver || 'N/A'}\nSource: ${source || 'N/A'}\nDelivery: ${delivery || 'N/A'}`
           };
 
           const existingInvoices = await getLinkedSalesInvoices(savedProjectId);
@@ -296,6 +308,7 @@ const DayBook = () => {
       setIsAdding(false);
       setEditProjectId(null);
       setFormData({
+        date: getTodayDate(),
         sl_no: '', customer_name: '', job_card: '', model_name: '',
         consumption: '', warranty: '', cash: '', bank: '', credit: '',
         cost: '', profit: '', branch: '', create_additional_invoice: false
@@ -311,8 +324,10 @@ const DayBook = () => {
     const nameParts = (project.project_name || '').trim().split(/\s+/);
     const code = nameParts[0] || '';
     const name = nameParts.slice(1).join(' ') || '';
+    const rawDate = project.expected_start_date || extractNote(project.notes, 'Date') || (project.creation ? project.creation.split(' ')[0] : getTodayDate());
 
     setFormData({
+      date: rawDate,
       sl_no: project.name || '',
       customer_name: name,
       job_card: code,
@@ -366,9 +381,8 @@ const DayBook = () => {
       const source = extractNote(existingNotes, 'Source') || extractNote(existingNotes, 'Update');
       const delivery = extractNote(existingNotes, 'Delivery');
       const amount = extractNote(existingNotes, 'Amount');
-      const phone = extractNote(existingNotes, 'Phone');
-
-      let newNotes = `Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nSource: ${source}\nDelivery: ${delivery}\nAmount: ${amount}`;
+      const dateNote = extractNote(existingNotes, 'Date');
+      let newNotes = `${dateNote ? `Date: ${dateNote}\n` : ''}Complaint: ${complaint}\nPasscode: ${passcode}\nReceiver: ${receiver}\nTechnician: ${technician}\nSource: ${source}\nDelivery: ${delivery}\nAmount: ${amount}`;
       if (phone) {
         newNotes += `\nPhone: ${phone}`;
       }
@@ -477,8 +491,18 @@ const DayBook = () => {
 
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
-      
-      const dateString = new Date().toLocaleDateString();
+      const rawDate = project.expected_start_date || extractNote(project.notes, 'Date') || project.creation;
+      let dateString = '';
+      if (rawDate) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+          const [y, m, d] = rawDate.split('-');
+          dateString = `${d}/${m}/${y}`;
+        } else {
+          const dateObj = new Date(rawDate);
+          dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+        }
+      }
+      if (!dateString) dateString = new Date().toLocaleDateString();
       const customerPhone = project.custom_phone || extractNote(project.notes, 'Phone') || '-';
       const warranty = extractNote(project.notes, 'Warranty') || '-';
       
@@ -656,10 +680,12 @@ const DayBook = () => {
 
   const handleClear = () => {
     setFormData({
+      date: getTodayDate(),
       customer_name: '', job_card: '', model_name: '',
       consumption: '', warranty: '', cash: '', bank: '', credit: '',
       cost: '', profit: '', branch: '', create_additional_invoice: false
     });
+    setEditProjectId(null);
   };
 
   const handleInputChange = (field, value) => {
@@ -691,11 +717,13 @@ const DayBook = () => {
       if (match) {
         const nameParts = (match.project_name || '').trim().split(/\s+/);
         const name = nameParts.slice(1).join(' ') || '';
+        const matchDate = match.expected_start_date || extractNote(match.notes, 'Date');
         
         setFormData(prev => ({
           ...prev,
           customer_name: name || '',
-          model_name: match.custom_model_name || ''
+          model_name: match.custom_model_name || '',
+          ...(matchDate ? { date: matchDate } : {})
         }));
         
         // This makes sure we update the existing job card instead of creating a duplicate!
@@ -720,7 +748,17 @@ const DayBook = () => {
             <RefreshCw size={16} /> Refresh
           </button>
           {!isAdding && (
-            <button className="btn btn-primary" onClick={() => setIsAdding(true)}>
+            <button className="btn btn-primary" onClick={() => {
+              setFormData({
+                date: getTodayDate(),
+                customer_name: '', job_card: '', model_name: '',
+                consumption: '', warranty: '', cash: '', bank: '', credit: '',
+                cost: '', profit: '', branch: user?.role === 'admin' ? '' : (user?.name || ''),
+                create_additional_invoice: false
+              });
+              setEditProjectId(null);
+              setIsAdding(true);
+            }}>
               <Plus size={18} /> New Entry
             </button>
           )}
@@ -731,6 +769,16 @@ const DayBook = () => {
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>{editProjectId ? 'Edit Day Book Entry' : 'New Day Book Entry'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div className="input-group">
+              <label>Date</label>
+              <input 
+                type="date" 
+                className="input-field" 
+                value={formData.date || getTodayDate()} 
+                onChange={e => handleInputChange('date', e.target.value)} 
+                required 
+              />
+            </div>
             {user?.role === 'admin' && (
               <div className="input-group">
                 <label>Branch</label>
@@ -843,6 +891,7 @@ const DayBook = () => {
           <table className="data-table">
             <thead>
               <tr>
+                <th>DATE</th>
                 <th>SL. NO</th>
                 <th style={{ minWidth: '150px', maxWidth: '220px', whiteSpace: 'normal' }}>CUSTOMER NAME</th>
                 <th>JOB CARD</th>
@@ -865,6 +914,19 @@ const DayBook = () => {
                 const code = nameParts[0] || '';
                 const name = nameParts.slice(1).join(' ') || '';
                 
+                // Format Date from expected_start_date, notes Date, or Frappe creation field
+                const rawDate = p.expected_start_date || extractNote(p.notes, 'Date') || p.creation;
+                let dateString = '-';
+                if (rawDate) {
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+                    const [y, m, d] = rawDate.split('-');
+                    dateString = `${d}/${m}/${y}`;
+                  } else {
+                    const dateObj = new Date(rawDate);
+                    dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                  }
+                }
+                
                 // Get enriched Frappe data (Sales Invoice + Payment Entry)
                 const ed = enrichedData[p.name];
                 
@@ -882,6 +944,7 @@ const DayBook = () => {
 
                 return (
                   <tr key={p.name || i}>
+                    <td>{dateString}</td>
                     <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{p.name || '-'}</td>
                     <td style={{ fontWeight: 600, maxWidth: '220px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{name}</td>
                     <td>{code}</td>
