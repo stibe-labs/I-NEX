@@ -1011,10 +1011,13 @@ export const getNextINEXItemId = async (prefix) => {
     let maxNum = 0;
     items.forEach(item => {
       const code = item.item_code || '';
-      const numPart = code.replace(prefix, '');
-      const num = parseInt(numPart, 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
+      const numPart = code.replace(prefix, '').trim();
+      const match = numPart.match(/^(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
       }
     });
     return `${prefix}${maxNum + 1}`;
@@ -1061,7 +1064,32 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
     }
 
     const data = await res.json();
-    return data.data;
+    const created = data.data;
+
+    // ERPNext may name the item using naming series (e.g. STO-ITEM-YYYY-#####) instead of custom itemCode.
+    // If name differs from requested itemCode, rename it so it matches requested ID and shows in listing.
+    if (created && created.name && itemCode && created.name !== itemCode.trim()) {
+      try {
+        const renameRes = await fetch(`${API_URL}/api/method/frappe.client.rename_doc`, {
+          method: 'POST',
+          headers: getHeaders(),
+          credentials: 'omit',
+          body: JSON.stringify({
+            doctype: 'Item',
+            old_name: created.name,
+            new_name: itemCode.trim()
+          })
+        });
+        if (renameRes.ok) {
+          created.name = itemCode.trim();
+          created.item_code = itemCode.trim();
+        }
+      } catch (renameErr) {
+        console.warn("Could not rename item to " + itemCode, renameErr);
+      }
+    }
+
+    return created;
   } catch (error) {
     console.error("Error creating INEX item", error);
     throw error;

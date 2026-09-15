@@ -35,6 +35,7 @@ const INEXAccessories = () => {
   }, []);
   
   const [formData, setFormData] = useState({
+    custom_id: '',
     item_name: '',
     uom: ''
   });
@@ -59,8 +60,17 @@ const INEXAccessories = () => {
     try {
       const id = await getNextINEXItemId(currentConfig.prefix);
       setNextId(id);
+      setFormData(prev => ({
+        ...prev,
+        custom_id: prev.custom_id ? prev.custom_id : id
+      }));
     } catch (e) {
-      setNextId(currentConfig.prefix + '1');
+      const fallback = currentConfig.prefix + '1';
+      setNextId(fallback);
+      setFormData(prev => ({
+        ...prev,
+        custom_id: prev.custom_id ? prev.custom_id : fallback
+      }));
     }
   }, [currentConfig]);
 
@@ -70,8 +80,17 @@ const INEXAccessories = () => {
   }, [loadData, loadNextId]);
 
   const handleSave = async () => {
+    const targetId = editingItem ? editingItem.item_code : (formData.custom_id || nextId || '').trim();
+    if (!targetId) {
+      toast.error('Item ID is required');
+      return;
+    }
     if (!formData.item_name.trim()) {
       toast.error('Item Name is required');
+      return;
+    }
+    if (!editingItem && items.some(it => (it.item_code || '').toLowerCase() === targetId.toLowerCase())) {
+      toast.error(`Item ID "${targetId}" already exists. Please choose a different ID.`);
       return;
     }
 
@@ -85,18 +104,18 @@ const INEXAccessories = () => {
         toast.success(`Item ${editingItem.item_code} updated successfully!`);
       } else {
         await createINEXItem({
-          itemCode: nextId,
+          itemCode: targetId,
           itemName: formData.item_name.trim(),
           uom: 'Nos',
           warehouse: currentConfig.warehouse,
           quantity: formData.uom.trim()
         });
-        toast.success(`Item ${nextId} created successfully!`);
+        toast.success(`Item ${targetId} created successfully!`);
       }
       
       setIsAdding(false);
       setEditingItem(null);
-      setFormData({ item_name: '', uom: '' });
+      setFormData({ custom_id: '', item_name: '', uom: '' });
       await loadData();
       await loadNextId();
     } catch (e) {
@@ -109,7 +128,7 @@ const INEXAccessories = () => {
   const handleEditClick = (item) => {
     setEditingItem(item);
     // Use custom_unit_qty as the storage for custom quantity/unit
-    setFormData({ item_name: item.item_name, uom: item.custom_unit_qty || '' }); 
+    setFormData({ custom_id: item.item_code, item_name: item.item_name, uom: item.custom_unit_qty || '' }); 
     setIsAdding(true);
   };
 
@@ -127,14 +146,14 @@ const INEXAccessories = () => {
   const handleCancel = () => {
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ item_name: '', uom: '' });
+    setFormData({ custom_id: '', item_name: '', uom: '' });
   };
 
   const handleBranchChange = (branch) => {
     setSelectedBranch(branch);
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ item_name: '', uom: '' });
+    setFormData({ custom_id: '', item_name: '', uom: '' });
   };
 
   return (
@@ -150,7 +169,13 @@ const INEXAccessories = () => {
             <RefreshCw size={16} /> Refresh
           </button>
           {!isAdding && (
-            <button className="btn btn-primary" onClick={() => setIsAdding(true)}>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => {
+                setFormData({ custom_id: nextId, item_name: '', uom: '' });
+                setIsAdding(true);
+              }}
+            >
               <Plus size={18} /> Add Item
             </button>
           )}
@@ -223,21 +248,37 @@ const INEXAccessories = () => {
             {editingItem ? `Edit Item — ${editingItem.item_code}` : `New Item — ${selectedBranch}`}
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            {/* ID - Auto-generated (read-only) */}
+            {/* ID - Auto-generated (default), but editable */}
             <div className="input-group">
-              <label>ID <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>(fixed)</span></label>
-              <div style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                background: 'rgba(0,0,0,0.03)',
-                border: '1px solid rgba(0,0,0,0.08)',
-                fontWeight: 700,
-                fontSize: '1.1rem',
-                color: 'var(--primary-color)',
-                letterSpacing: '0.5px'
-              }}>
-                {editingItem ? editingItem.item_code : (nextId || <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />)}
-              </div>
+              <label>ID <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{editingItem ? '(fixed)' : '(auto, editable)'}</span></label>
+              {editingItem ? (
+                <div style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '10px',
+                  background: 'rgba(0,0,0,0.03)',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  color: 'var(--primary-color)',
+                  letterSpacing: '0.5px'
+                }}>
+                  {editingItem.item_code}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder={nextId || `${currentConfig?.prefix || 'IP'}1`}
+                  value={formData.custom_id}
+                  onChange={e => setFormData({ ...formData, custom_id: e.target.value })}
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '1.05rem',
+                    color: 'var(--primary-color)',
+                    letterSpacing: '0.5px'
+                  }}
+                />
+              )}
             </div>
 
             {/* Item Name */}
