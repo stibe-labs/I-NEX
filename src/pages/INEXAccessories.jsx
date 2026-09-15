@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchINEXItems, getNextINEXItemId, createINEXItem, updateINEXItem, deleteINEXItem, getINEXBranchConfig } from '../api/frappeClient';
-import { Plus, Save, X, Package, RefreshCw, Loader2, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { fetchINEXItems, getNextINEXItemId, createINEXItem, updateINEXItem, deleteINEXItem, toggleINEXItemStatus, getINEXBranchConfig } from '../api/frappeClient';
+import { Plus, Save, X, Package, RefreshCw, Loader2, MoreVertical, Edit, Trash2, Power, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -27,6 +27,7 @@ const INEXAccessories = () => {
   const [nextId, setNextId] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [showDisabled, setShowDisabled] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = () => setDropdownOpen(null);
@@ -135,11 +136,26 @@ const INEXAccessories = () => {
   const handleDeleteClick = async (itemCode) => {
     if (!window.confirm(`Are you sure you want to delete ${itemCode}?`)) return;
     try {
-      await deleteINEXItem(itemCode);
-      toast.success(`${itemCode} deleted successfully`);
+      const res = await deleteINEXItem(itemCode);
+      if (res && res.disabled) {
+        toast.success(`${itemCode} has stock history, so it was disabled instead of deleted.`);
+      } else {
+        toast.success(`${itemCode} deleted successfully`);
+      }
       loadData();
+      loadNextId();
     } catch (e) {
       toast.error(e.message || 'Failed to delete item');
+    }
+  };
+
+  const handleToggleStatus = async (item) => {
+    try {
+      const newDisabled = await toggleINEXItemStatus(item.item_code, item.disabled);
+      toast.success(`${item.item_code} ${newDisabled ? 'disabled' : 'enabled'} successfully`);
+      loadData();
+    } catch (e) {
+      toast.error(e.message || 'Failed to update item status');
     }
   };
 
@@ -165,6 +181,22 @@ const INEXAccessories = () => {
           INEX Accessories
         </h1>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button 
+            className="btn" 
+            style={{ 
+              background: !showDisabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)', 
+              color: !showDisabled ? 'var(--success-color)' : 'inherit',
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.4rem',
+              fontSize: '0.85rem'
+            }} 
+            onClick={() => setShowDisabled(!showDisabled)}
+            title={showDisabled ? "Click to show active items only" : "Click to show all items"}
+          >
+            {!showDisabled ? <EyeOff size={16} /> : <Eye size={16} />}
+            {!showDisabled ? 'Active Only' : 'Showing All'}
+          </button>
           <button className="btn" style={{ background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => { loadData(); loadNextId(); }}>
             <RefreshCw size={16} /> Refresh
           </button>
@@ -395,9 +427,9 @@ const INEXAccessories = () => {
               </tr>
             </thead>
             <tbody>
-              {items.map((item, i) => (
-                <tr key={item.item_code || i}>
-                  <td style={{ fontWeight: 700, color: 'var(--primary-color)', letterSpacing: '0.3px' }}>
+              {items.filter(item => showDisabled || !item.disabled).map((item, i) => (
+                <tr key={item.item_code || i} style={{ opacity: item.disabled ? 0.65 : 1 }}>
+                  <td style={{ fontWeight: 700, color: item.disabled ? 'var(--text-secondary)' : 'var(--primary-color)', letterSpacing: '0.3px' }}>
                     {item.item_code}
                   </td>
                   <td style={{ fontWeight: 600 }}>{item.item_name}</td>
@@ -459,7 +491,7 @@ const INEXAccessories = () => {
                         zIndex: 100,
                         display: 'flex',
                         flexDirection: 'column',
-                        minWidth: '120px'
+                        minWidth: '130px'
                       }}>
                         <button 
                           onClick={() => handleEditClick(item)}
@@ -468,6 +500,14 @@ const INEXAccessories = () => {
                           onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                         >
                           <Edit size={14} style={{ color: 'var(--primary-color)' }} /> Edit
+                        </button>
+                        <button 
+                          onClick={() => handleToggleStatus(item)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: item.disabled ? 'var(--success-color)' : '#d97706' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Power size={14} /> {item.disabled ? 'Enable Item' : 'Disable Item'}
                         </button>
                         <button 
                           onClick={() => handleDeleteClick(item.item_code)}
@@ -482,10 +522,10 @@ const INEXAccessories = () => {
                   </td>
                 </tr>
               ))}
-              {items.length === 0 && (
+              {items.filter(item => showDisabled || !item.disabled).length === 0 && (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                    No items found for {selectedBranch}. Click "Add Item" to create one.
+                    No {!showDisabled ? 'active ' : ''}items found for {selectedBranch}.
                   </td>
                 </tr>
               )}

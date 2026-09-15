@@ -1043,13 +1043,9 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
       ]
     };
 
-    // If a quantity is provided, try to set it as the opening stock
+    // Save quantity to custom_unit_qty (avoids ERPNext opening_stock ledger locks so items can be deleted freely)
     if (quantity !== undefined && quantity !== null && quantity !== '') {
-      const qty = parseFloat(quantity) || 0;
-      payload.opening_stock = qty;
-      payload.valuation_rate = qty > 0 ? 1 : 0; // ERPNext requires valuation_rate > 0 if opening_stock > 0
-      payload.standard_rate = 0;
-      payload.custom_unit_qty = quantity.toString(); // Save to custom field
+      payload.custom_unit_qty = quantity.toString();
     }
 
     const res = await fetch(`${API_URL}/api/resource/Item`, {
@@ -1126,12 +1122,25 @@ export const deleteINEXItem = async (itemCode) => {
     });
 
     if (!res.ok) {
-      throw await extractFrappeError(res, 'Failed to delete INEX item');
+      const err = await extractFrappeError(res, 'Failed to delete INEX item');
+      const errStr = (err.message || '').toLowerCase();
+      // If ERPNext blocks deletion due to stock ledger entries or links, disable it instead
+      if (errStr.includes('stock ledger entry') || errStr.includes('linked with') || errStr.includes('disable this item')) {
+        await updateINEXItem(itemCode, { disabled: 1 });
+        return { success: true, disabled: true };
+      }
+      throw err;
     }
 
-    return true;
+    return { success: true, deleted: true };
   } catch (error) {
     console.error("Error deleting INEX item", error);
     throw error;
   }
+};
+
+export const toggleINEXItemStatus = async (itemCode, currentDisabled) => {
+  const newDisabled = currentDisabled ? 0 : 1;
+  await updateINEXItem(itemCode, { disabled: newDisabled });
+  return newDisabled;
 };
