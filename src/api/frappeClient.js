@@ -1009,10 +1009,12 @@ export const getNextINEXItemId = async (prefix) => {
   try {
     const items = await fetchINEXItems(prefix);
     let maxNum = 0;
+    // Match only items whose code is strictly prefix followed ONLY by digits (e.g. IP1, IP2, IK1, IT1)
+    // Completely avoids false matches on phone models like "IP 17 COVER" or "IP 13 COMBO"
+    const regex = new RegExp(`^${prefix}(\\d+)$`, 'i');
     items.forEach(item => {
-      const code = item.item_code || '';
-      const numPart = code.replace(prefix, '').trim();
-      const match = numPart.match(/^(\d+)/);
+      const code = (item.item_code || '').trim();
+      const match = code.match(regex);
       if (match) {
         const num = parseInt(match[1], 10);
         if (num > maxNum) {
