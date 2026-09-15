@@ -314,8 +314,16 @@ export const ensureItem = async (jobCardCode, itemDescription = '') => {
     const desc = itemDescription ? itemDescription.trim() : 'Service';
     const itemCode = jobCardCode ? `${jobCardCode} ${desc}`.substring(0, 140) : `GENERIC ${desc}`.substring(0, 140);
     
-    // Attempt to create, if it fails due to duplicate, that's fine
-    await fetch(`${API_URL}/api/resource/Item`, {
+    // Check if itemCode already exists
+    const checkRes = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
+      headers: getHeaders()
+    });
+    if (checkRes.ok) {
+      return itemCode;
+    }
+
+    // Attempt to create
+    const res = await fetch(`${API_URL}/api/resource/Item`, {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
@@ -326,11 +334,14 @@ export const ensureItem = async (jobCardCode, itemDescription = '') => {
         is_stock_item: 0
       })
     });
-    return itemCode;
+    if (res.ok) {
+      const data = await res.json();
+      return data.data?.name || data.data?.item_code || itemCode;
+    }
+    return 'Service';
   } catch (error) {
     console.error("Error ensuring Item:", error);
-    const fallback = jobCardCode ? `${jobCardCode} Service` : 'GENERIC-SERVICE';
-    return fallback.substring(0, 140);
+    return 'Service';
   }
 };
 
@@ -338,7 +349,15 @@ export const ensureExactItem = async (itemName) => {
   try {
     const itemCode = itemName ? itemName.trim().substring(0, 140) : 'Service';
     
-    await fetch(`${API_URL}/api/resource/Item`, {
+    // Check if itemCode already exists
+    const checkRes = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
+      headers: getHeaders()
+    });
+    if (checkRes.ok) {
+      return itemCode;
+    }
+
+    const res = await fetch(`${API_URL}/api/resource/Item`, {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
@@ -349,10 +368,14 @@ export const ensureExactItem = async (itemName) => {
         is_stock_item: 0
       })
     });
-    return itemCode;
+    if (res.ok) {
+      const data = await res.json();
+      return data.data?.name || data.data?.item_code || itemCode;
+    }
+    return 'Service';
   } catch (error) {
     console.error("Error ensuring exact Item:", error);
-    return itemName ? itemName.trim().substring(0, 140) : 'Service';
+    return 'Service';
   }
 };
 

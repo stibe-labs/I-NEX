@@ -11,7 +11,6 @@ import {
   cancelSalesInvoice,
   ensureSupplier,
   ensureCustomer,
-  ensureItem,
   deletePurchaseReceipt,
   deleteSalesInvoice
 } from '../api/frappeClient';
@@ -133,23 +132,7 @@ const PhonePurchaseSale = () => {
   const availableProjects = phoneProjects;
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value };
-      
-      if (activeTab === 'sales' && field === 'imei' && value.trim().length > 0) {
-        const matchingPurchase = purchases.find(p => {
-          const pImei = extractIMEI(p.remarks);
-          return pImei && pImei.toLowerCase() === value.trim().toLowerCase();
-        });
-        
-        if (matchingPurchase) {
-          next.model = getModelFromRemarks(matchingPurchase.remarks) || '';
-          next.amount = matchingPurchase.grand_total || '';
-        }
-      }
-      
-      return next;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleClear = () => {
@@ -204,9 +187,12 @@ const PhonePurchaseSale = () => {
       if (!project) throw new Error("Invalid Branch Project selected");
 
       const company = project.company || (user?.role === 'branch' ? user?.name : 'INEX');
-      const itemCode = await ensureItem(formData.model, `IMEI: ${formData.imei}`);
+      const itemCode = 'Service';
       const rate = parseFloat(formData.amount) || 0;
-      const remarks = `Model: ${formData.model}\nIMEI Number: ${formData.imei}`;
+      const cleanImei = formData.imei ? formData.imei.trim() : '';
+      const cleanModel = formData.model ? formData.model.trim() : '';
+      const remarks = `Model: ${cleanModel}\nIMEI Number: ${cleanImei || '-'}`;
+      const itemDesc = cleanImei ? `Model: ${cleanModel}, IMEI: ${cleanImei}` : `Model: ${cleanModel}`;
 
       if (activeTab === 'purchases') {
         const supplierName = await ensureSupplier(formData.party_name);
@@ -221,7 +207,7 @@ const PhonePurchaseSale = () => {
             rate: rate,
             price_list_rate: rate,
             amount: rate,
-            description: `Model: ${formData.model}, IMEI: ${formData.imei}`,
+            description: itemDesc,
             project: project.name
           }],
           remarks: remarks
@@ -257,7 +243,7 @@ const PhonePurchaseSale = () => {
             rate: rate,
             price_list_rate: rate,
             amount: rate,
-            description: `Model: ${formData.model}, IMEI: ${formData.imei}`,
+            description: itemDesc,
             project: project.name
           }],
           remarks: remarks
@@ -321,13 +307,13 @@ const PhonePurchaseSale = () => {
 
   const extractIMEI = (remarks) => {
     if (!remarks) return '-';
-    const match = remarks.match(/IMEI Number:\s*([^\n\r]+)/i);
+    const match = remarks.match(/IMEI(?:\s*Number)?:\s*([^\n\r,]+)/i);
     return match ? match[1].trim() : '-';
   };
 
   const getModelFromRemarks = (remarks) => {
     if (!remarks) return '-';
-    const match = remarks.match(/Model:\s*([^\n\r]+)/i);
+    const match = remarks.match(/Model:\s*([^\n\r,]+)/i);
     return match ? match[1].trim() : '-';
   };
 
@@ -361,7 +347,7 @@ const PhonePurchaseSale = () => {
     return records.filter(record => {
       // Must be linked to a phone purchase & sales project or have IMEI remarks
       const isPhoneRecord = phoneProjectNames.includes(record.project) || 
-                            (record.remarks && /IMEI Number:/i.test(record.remarks));
+                            (record.remarks && /IMEI/i.test(record.remarks));
       if (!isPhoneRecord) return false;
 
       const recordProject = projects.find(p => p.name === record.project);
