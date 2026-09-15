@@ -58,22 +58,35 @@ const INEXAccessories = () => {
 
   const loadNextId = useCallback(async () => {
     if (!currentConfig) return;
+    const prefix = currentConfig.prefix;
     try {
-      const id = await getNextINEXItemId(currentConfig.prefix);
+      const id = await getNextINEXItemId(prefix);
       setNextId(id);
-      setFormData(prev => ({
-        ...prev,
-        custom_id: prev.custom_id ? prev.custom_id : id
-      }));
+      setFormData(prev => {
+        if (!editingItem) {
+          const isStale = prev.custom_id && !prev.custom_id.toUpperCase().startsWith(prefix.toUpperCase());
+          return {
+            ...prev,
+            custom_id: (!prev.custom_id || isStale) ? id : prev.custom_id
+          };
+        }
+        return prev;
+      });
     } catch (e) {
-      const fallback = currentConfig.prefix + '1';
+      const fallback = prefix + '1';
       setNextId(fallback);
-      setFormData(prev => ({
-        ...prev,
-        custom_id: prev.custom_id ? prev.custom_id : fallback
-      }));
+      setFormData(prev => {
+        if (!editingItem) {
+          const isStale = prev.custom_id && !prev.custom_id.toUpperCase().startsWith(prefix.toUpperCase());
+          return {
+            ...prev,
+            custom_id: (!prev.custom_id || isStale) ? fallback : prev.custom_id
+          };
+        }
+        return prev;
+      });
     }
-  }, [currentConfig]);
+  }, [currentConfig, editingItem]);
 
   useEffect(() => {
     loadData();
@@ -167,6 +180,7 @@ const INEXAccessories = () => {
 
   const handleBranchChange = (branch) => {
     setSelectedBranch(branch);
+    setNextId('');
     setIsAdding(false);
     setEditingItem(null);
     setFormData({ custom_id: '', item_name: '', uom: '' });
@@ -204,7 +218,9 @@ const INEXAccessories = () => {
             <button 
               className="btn btn-primary" 
               onClick={() => {
-                setFormData({ custom_id: nextId, item_name: '', uom: '' });
+                const prefix = currentConfig?.prefix || 'IP';
+                const defaultNext = (nextId && nextId.toUpperCase().startsWith(prefix.toUpperCase())) ? nextId : `${prefix}1`;
+                setFormData({ custom_id: defaultNext, item_name: '', uom: '' });
                 setIsAdding(true);
               }}
             >
