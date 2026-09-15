@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, TrendingUp, AlertCircle, Package, DollarSign, X, ChevronRight, Boxes } from 'lucide-react';
+import { Users, BookOpen, TrendingUp, AlertCircle, Package, DollarSign, X, ChevronRight, Boxes, Download, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchProjects } from '../api/frappeClient';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AdminDashboard = () => {
   const [showPendingModal, setShowPendingModal] = useState(false);
@@ -61,8 +63,10 @@ const AdminDashboard = () => {
             pendingList.push({
               code: (p.project_name || '').trim().split(/\s+/)[0] || '-',
               name: (p.project_name || '').trim().split(/\s+/).slice(1).join(' ') || '-',
+              phone: p.custom_phone || extractNote(p.notes, 'Phone') || '-',
               model: p.custom_model_name || '-',
-              branch: p.company || 'INEX'
+              branch: p.company || 'INEX',
+              status: extractNote(p.notes, 'Status') || p.status || 'Open'
             });
           }
           
@@ -100,6 +104,85 @@ const AdminDashboard = () => {
     
     loadStats();
   }, []);
+
+  const handleDownloadPDF = (openInNewTab = false) => {
+    const doc = new jsPDF();
+    const currentDate = new Date().toLocaleDateString('en-GB');
+
+    // Title & Header
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("I-NEX CARE - ALL BRANCHES PENDING REPAIRS REPORT", 14, 20);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Scope: All Branches", 14, 28);
+    doc.text(`Date: ${currentDate}`, 150, 28);
+    doc.text(`Total Pending Repairs: ${pendingRepairsList.length}`, 14, 34);
+
+    // Divider Line
+    doc.setLineWidth(0.5);
+    doc.line(14, 38, 196, 38);
+
+    // Table
+    const tableData = pendingRepairsList.map((item, index) => [
+      index + 1,
+      item.code,
+      item.name,
+      item.phone || '-',
+      item.model || '-',
+      item.branch || '-',
+      item.status || 'Open'
+    ]);
+
+    autoTable(doc, {
+      startY: 42,
+      head: [['#', 'Job Code', 'Customer Name', 'Phone', 'Model', 'Branch', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [30, 41, 59],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      }
+    });
+
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(`Generated on ${new Date().toLocaleString('en-GB')} | I-NEX Management System`, 105, 285, { align: 'center' });
+
+    const safeDate = currentDate.replace(/\//g, '-');
+    const fileName = `Pending_Repairs_All_Branches_${safeDate}.pdf`;
+
+    try {
+      const blob = doc.output('blob');
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      if (openInNewTab) {
+        window.open(blobUrl, '_blank');
+      } else {
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (e) {
+      console.warn("Direct blob download failed, falling back to doc.save:", e);
+      doc.save(fileName);
+    }
+  };
 
   return (
     <div>
@@ -241,31 +324,60 @@ const AdminDashboard = () => {
 
       {showPendingModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: '700px', maxHeight: '80vh', overflowY: 'auto', background: 'white' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0 }}>Pending Repairs</h3>
-              <button onClick={() => setShowPendingModal(false)} className="btn-icon" style={{ background: 'transparent', padding: '0.5rem', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto', background: 'white' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <h3 style={{ margin: 0 }}>Pending Repairs (All Branches)</h3>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button 
+                  className="btn" 
+                  onClick={() => handleDownloadPDF(true)} 
+                  disabled={pendingRepairsList.length === 0}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
+                  title="View PDF directly in browser"
+                >
+                  <Eye size={16} /> View PDF
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => handleDownloadPDF(false)} 
+                  disabled={pendingRepairsList.length === 0}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                >
+                  <Download size={16} /> Download PDF
+                </button>
+                <button 
+                  onClick={() => setShowPendingModal(false)} 
+                  className="btn-icon" 
+                  style={{ background: 'transparent', padding: '0.5rem', border: 'none', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             <table className="data-table">
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left' }}>CODE</th>
                   <th style={{ textAlign: 'left' }}>CUSTOMER</th>
+                  <th style={{ textAlign: 'left' }}>PHONE</th>
                   <th style={{ textAlign: 'left' }}>MODEL</th>
                   <th style={{ textAlign: 'left' }}>BRANCH</th>
+                  <th style={{ textAlign: 'left' }}>STATUS</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingRepairsList.map((item, i) => (
                   <tr key={i}>
-                    <td>{item.code}</td>
+                    <td style={{ fontWeight: 600 }}>{item.code}</td>
                     <td style={{ fontWeight: 600 }}>{item.name}</td>
+                    <td>{item.phone}</td>
                     <td>{item.model}</td>
                     <td>{item.branch}</td>
+                    <td><span className="badge badge-warning">{item.status}</span></td>
                   </tr>
                 ))}
                 {pendingRepairsList.length === 0 && (
-                  <tr><td colSpan="4" style={{ textAlign: 'center' }}>No pending repairs found.</td></tr>
+                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No pending repairs found.</td></tr>
                 )}
               </tbody>
             </table>
