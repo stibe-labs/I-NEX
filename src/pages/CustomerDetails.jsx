@@ -240,12 +240,12 @@ const CustomerDetails = () => {
       name: name,
       phone_no: p.custom_phone || extractNote(p.notes, 'Phone') || '+91-',
       model: p.custom_model_name || '',
-      imei_no: p.custom_imei_number || '',
+      imei_no: p.custom_imei_number || extractNote(p.notes, 'IMEI') || '',
       complaint: extractNote(p.notes, 'Complaint') || '',
       passcode: extractNote(p.notes, 'Passcode') || '',
       amount: extractNote(p.notes, 'Amount') || p.total_billed_amount || '',
-      receiver: extractNote(p.notes, 'Receiver') || '',
-      technician: extractNote(p.notes, 'Technician') || '',
+      receiver: p.custom_receiver || extractNote(p.notes, 'Receiver') || '',
+      technician: p.custom_technician || extractNote(p.notes, 'Technician') || '',
       source: extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '',
       delivery: extractNote(p.notes, 'Delivery') || '',
       branch: p.company || '',
@@ -323,7 +323,8 @@ const CustomerDetails = () => {
     const nameStr = (p.project_name || '').toLowerCase();
     const phoneStr = (p.custom_phone || extractNote(p.notes, 'Phone') || '').toLowerCase();
     const modelStr = (p.custom_model_name || '').toLowerCase();
-    const imeiStr = (p.custom_imei_number || '').toLowerCase();
+    const imeiStr = (p.custom_imei_number || extractNote(p.notes, 'IMEI') || '').toLowerCase();
+    const complaintStr = (extractNote(p.notes, 'Complaint') || '').toLowerCase();
     const receiverStr = rowReceiver.toLowerCase();
     const technicianStr = rowTechnician.toLowerCase();
     const statusStr = rowStatus.toLowerCase();
@@ -331,6 +332,7 @@ const CustomerDetails = () => {
            phoneStr.includes(term) || 
            modelStr.includes(term) || 
            imeiStr.includes(term) || 
+           complaintStr.includes(term) || 
            receiverStr.includes(term) || 
            technicianStr.includes(term) || 
            statusStr.includes(term);
@@ -364,7 +366,7 @@ const CustomerDetails = () => {
           next.name = name;
           next.phone_no = mPhone || '+91-';
           next.model = match.custom_model_name || '';
-          next.imei_no = match.custom_imei_number || '';
+          next.imei_no = match.custom_imei_number || extractNote(match.notes, 'IMEI') || '';
           next.status = extractNote(match.notes, 'Status') || '🟡 Pending';
         } else {
           if (field === 'code') {
@@ -683,6 +685,7 @@ const CustomerDetails = () => {
                     <td style={{ fontWeight: 600 }}>{name}</td>
                     <td>{p.custom_phone || extractNote(p.notes, 'Phone') || '-'}</td>
                     <td>{p.custom_model_name || '-'}</td>
+                    <td>{p.custom_imei_number || extractNote(p.notes, 'IMEI') || '-'}</td>
                     <td style={{ maxWidth: '220px', minWidth: '140px', whiteSpace: 'normal', verticalAlign: 'middle' }}>
                       <div style={{
                         maxWidth: '220px',
@@ -701,8 +704,8 @@ const CustomerDetails = () => {
                     </td>
                     <td>{extractNote(p.notes, 'Passcode') || '-'}</td>
                     <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{extractNote(p.notes, 'Amount') || p.total_billed_amount || '-'}</td>
-                    <td>{extractNote(p.notes, 'Receiver') || '-'}</td>
-                    <td>{extractNote(p.notes, 'Technician') || '-'}</td>
+                    <td>{p.custom_receiver || extractNote(p.notes, 'Receiver') || '-'}</td>
+                    <td>{p.custom_technician || extractNote(p.notes, 'Technician') || '-'}</td>
                     <td>{extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '-'}</td>
                     <td>{extractNote(p.notes, 'Delivery') || '-'}</td>
                     <td>
