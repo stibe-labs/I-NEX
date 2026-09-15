@@ -3,15 +3,21 @@ import {
   fetchProjects, 
   fetchPurchaseReceipts, 
   fetchSalesInvoices,
+  fetchPhonePurchases,
+  parsePhoneDetails,
   createPurchaseReceipt, 
+  createPurchaseInvoice,
   createSalesInvoice,
   updatePurchaseReceipt,
+  updatePurchaseInvoice,
   updateSalesInvoice,
   cancelPurchaseReceipt,
+  cancelPurchaseInvoice,
   cancelSalesInvoice,
   ensureSupplier,
   ensureCustomer,
   deletePurchaseReceipt,
+  deletePurchaseInvoice,
   deleteSalesInvoice
 } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Trash2 } from 'lucide-react';
@@ -62,7 +68,7 @@ const PhonePurchaseSale = () => {
     try {
       const [projData, purchData, salesData] = await Promise.all([
         fetchProjects(),
-        fetchPurchaseReceipts(),
+        fetchPhonePurchases(),
         fetchSalesInvoices()
       ]);
       setProjects(projData);
@@ -162,6 +168,18 @@ const PhonePurchaseSale = () => {
     setIsAdding(true);
   };
 
+  const getRecordDetails = (r) => {
+    if (r.model && r.imei && r.model !== '-' && r.imei !== '-') {
+      return { model: r.model, imei: r.imei };
+    }
+    const itemText = r.item_text || r.item_description || r.description || '';
+    const details = parsePhoneDetails(r.remarks, itemText);
+    return {
+      model: r.model && r.model !== '-' ? r.model : details.model,
+      imei: r.imei && r.imei !== '-' ? r.imei : details.imei
+    };
+  };
+
   const handleSave = async () => {
     let targetProjectId = formData.branch_project;
     if (!targetProjectId && user?.role !== 'admin') {
@@ -214,20 +232,54 @@ const PhonePurchaseSale = () => {
         };
 
         if (editId) {
-          try {
-            await updatePurchaseReceipt(editId, invoiceData);
-          } catch (updateErr) {
-            if (updateErr.message && /not allowed to change|updateaftersubmit|cannot update/i.test(updateErr.message)) {
-              await cancelPurchaseReceipt(editId);
-              try { await deletePurchaseReceipt(editId); } catch (delErr) { console.warn(delErr); }
-              await createPurchaseReceipt(invoiceData);
-            } else {
-              throw updateErr;
+          const currentRec = purchases.find(p => p.name === editId);
+          const isDocSubmitted = currentRec?.docstatus === 1;
+
+          // If submitted, cancel and recreate directly to avoid Frappe child table / submit validation errors
+          if (isDocSubmitted) {
+            try {
+              if (currentRec.record_type === 'Purchase Invoice') {
+                await cancelPurchaseInvoice(editId);
+                if (currentRec.linked_pr) {
+                  try { await cancelPurchaseReceipt(currentRec.linked_pr); } catch (e) {}
+                  try { await deletePurchaseReceipt(currentRec.linked_pr); } catch (e) {}
+                }
+                try { await deletePurchaseInvoice(editId); } catch (e) {}
+              } else {
+                await cancelPurchaseReceipt(editId);
+                try { await deletePurchaseReceipt(editId); } catch (e) {}
+              }
+              await createPurchaseInvoice(invoiceData);
+            } catch (err) {
+              throw new Error("Could not update submitted entry: " + (err.message || err));
+            }
+          } else {
+            // Draft status: try PUT update, fallback to cancel/recreate if needed
+            try {
+              if (currentRec?.record_type === 'Purchase Invoice') {
+                await updatePurchaseInvoice(editId, invoiceData);
+              } else {
+                await updatePurchaseReceipt(editId, invoiceData);
+              }
+            } catch (updateErr) {
+              console.warn("Direct update failed, falling back to cancel & recreate:", updateErr);
+              try {
+                if (currentRec?.record_type === 'Purchase Invoice') {
+                  await cancelPurchaseInvoice(editId);
+                  try { await deletePurchaseInvoice(editId); } catch (e) {}
+                } else {
+                  await cancelPurchaseReceipt(editId);
+                  try { await deletePurchaseReceipt(editId); } catch (e) {}
+                }
+                await createPurchaseInvoice(invoiceData);
+              } catch (recreateErr) {
+                throw updateErr;
+              }
             }
           }
           toast.success("Purchase Updated!");
         } else {
-          await createPurchaseReceipt(invoiceData);
+          await createPurchaseInvoice(invoiceData);
           toast.success("Purchase Saved!");
         }
       } else {
@@ -250,15 +302,29 @@ const PhonePurchaseSale = () => {
         };
 
         if (editId) {
-          try {
-            await updateSalesInvoice(editId, invoiceData);
-          } catch (updateErr) {
-            if (updateErr.message && /not allowed to change|updateaftersubmit|cannot update/i.test(updateErr.message)) {
+          const currentRec = sales.find(s => s.name === editId);
+          const isDocSubmitted = currentRec?.docstatus === 1;
+
+          if (isDocSubmitted) {
+            try {
               await cancelSalesInvoice(editId);
-              try { await deleteSalesInvoice(editId); } catch (delErr) { console.warn(delErr); }
+              try { await deleteSalesInvoice(editId); } catch (e) {}
               await createSalesInvoice(invoiceData);
-            } else {
-              throw updateErr;
+            } catch (err) {
+              throw new Error("Could not update submitted sale: " + (err.message || err));
+            }
+          } else {
+            try {
+              await updateSalesInvoice(editId, invoiceData);
+            } catch (updateErr) {
+              console.warn("Direct update failed, falling back to cancel & recreate:", updateErr);
+              try {
+                await cancelSalesInvoice(editId);
+                try { await deleteSalesInvoice(editId); } catch (e) {}
+                await createSalesInvoice(invoiceData);
+              } catch (recreateErr) {
+                throw updateErr;
+              }
             }
           }
           toast.success("Sale Updated!");
@@ -282,11 +348,25 @@ const PhonePurchaseSale = () => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       try {
         if (activeTab === 'purchases') {
-          try {
-            await deletePurchaseReceipt(id);
-          } catch (delErr) {
-            await cancelPurchaseReceipt(id);
-            await deletePurchaseReceipt(id);
+          const currentRec = purchases.find(p => p.name === id);
+          if (currentRec?.record_type === 'Purchase Invoice') {
+            try {
+              await deletePurchaseInvoice(id);
+            } catch (delErr) {
+              await cancelPurchaseInvoice(id);
+              if (currentRec.linked_pr) {
+                try { await cancelPurchaseReceipt(currentRec.linked_pr); } catch (e) {}
+                try { await deletePurchaseReceipt(currentRec.linked_pr); } catch (e) {}
+              }
+              await deletePurchaseInvoice(id);
+            }
+          } else {
+            try {
+              await deletePurchaseReceipt(id);
+            } catch (delErr) {
+              await cancelPurchaseReceipt(id);
+              await deletePurchaseReceipt(id);
+            }
           }
         } else {
           try {
@@ -305,23 +385,10 @@ const PhonePurchaseSale = () => {
     }
   };
 
-  const extractIMEI = (remarks) => {
-    if (!remarks) return '-';
-    const match = remarks.match(/IMEI(?:\s*Number)?:\s*([^\n\r,]+)/i);
-    return match ? match[1].trim() : '-';
-  };
-
-  const getModelFromRemarks = (remarks) => {
-    if (!remarks) return '-';
-    const match = remarks.match(/Model:\s*([^\n\r,]+)/i);
-    return match ? match[1].trim() : '-';
-  };
-
   const handleEdit = (r) => {
     const rawDate = r.posting_date ? r.posting_date.split('T')[0].split(' ')[0] : new Date().toISOString().split('T')[0];
     const party = activeTab === 'purchases' ? (r.supplier || '') : (r.customer || '');
-    const model = getModelFromRemarks(r.remarks);
-    const imei = extractIMEI(r.remarks);
+    const { model, imei } = getRecordDetails(r);
     
     // Resolve project for record
     const matchedProj = phoneProjects.find(p => p.name === r.project || getBranchFromProject(p) === getBranchFromRecord(r));
@@ -345,9 +412,12 @@ const PhonePurchaseSale = () => {
   const filterRecords = (records) => {
     const phoneProjectNames = phoneProjects.map(p => p.name);
     return records.filter(record => {
-      // Must be linked to a phone purchase & sales project or have IMEI remarks
+      // Must be linked to a phone purchase & sales project or have IMEI/Model
+      const { model, imei } = getRecordDetails(record);
       const isPhoneRecord = phoneProjectNames.includes(record.project) || 
-                            (record.remarks && /IMEI/i.test(record.remarks));
+                            (record.remarks && /IMEI/i.test(record.remarks)) ||
+                            (model && model !== '-') ||
+                            (imei && imei !== '-');
       if (!isPhoneRecord) return false;
 
       const recordProject = projects.find(p => p.name === record.project);
@@ -384,10 +454,10 @@ const PhonePurchaseSale = () => {
       // Search term
       const term = searchTerm.toLowerCase();
       const party = (record.supplier || record.customer || '').toLowerCase();
-      const imei = extractIMEI(record.remarks).toLowerCase();
-      const model = getModelFromRemarks(record.remarks).toLowerCase();
+      const imeiStr = (imei || '').toLowerCase();
+      const modelStr = (model || '').toLowerCase();
 
-      return party.includes(term) || imei.includes(term) || model.includes(term);
+      return party.includes(term) || imeiStr.includes(term) || modelStr.includes(term);
     });
   };
 
@@ -575,14 +645,15 @@ const PhonePurchaseSale = () => {
                 const dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
                 
                 const party = activeTab === 'purchases' ? r.supplier : r.customer;
+                const { model, imei } = getRecordDetails(r);
                 
                 return (
                   <tr key={r.name || i}>
                     <td>{dateString}</td>
                     <td style={{ fontWeight: 600 }}>{projName}</td>
                     <td>{party || '-'}</td>
-                    <td>{getModelFromRemarks(r.remarks)}</td>
-                    <td>{extractIMEI(r.remarks)}</td>
+                    <td>{model}</td>
+                    <td>{imei}</td>
                     <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{r.grand_total || '-'}</td>
                     <td style={{ position: 'relative' }}>
                       <button 

@@ -654,6 +654,24 @@ export const updatePurchaseInvoice = async (invoiceId, invoiceData) => {
   }
 };
 
+export const cancelPurchaseInvoice = async (invoiceId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(invoiceId)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({ docstatus: 2 }),
+    });
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to cancel Purchase Invoice');
+    }
+    return true;
+  } catch (error) {
+    console.error("Error canceling Purchase Invoice", error);
+    throw error;
+  }
+};
+
 export const deletePurchaseInvoice = async (invoiceId) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(invoiceId)}`, {
@@ -673,7 +691,7 @@ export const deletePurchaseInvoice = async (invoiceId) => {
 
 export const fetchPurchaseInvoices = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?fields=["name","project","supplier","posting_date","grand_total","remarks","company"]&limit_page_length=0&order_by=creation desc`, {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Invoice?fields=["name","project","supplier","posting_date","grand_total","remarks","company","docstatus"]&limit_page_length=0&order_by=creation desc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
@@ -681,6 +699,141 @@ export const fetchPurchaseInvoices = async () => {
     return data.data || [];
   } catch (error) {
     console.error("Error fetching Purchase Invoices", error);
+    return [];
+  }
+};
+
+export const parsePhoneDetails = (remarks, itemText = '') => {
+  let model = '';
+  let imei = '';
+
+  if (remarks && remarks !== 'No Remarks') {
+    const imeiMatch = remarks.match(/IMEI(?:\s*Number)?:\s*([^\n\r,]+)/i);
+    if (imeiMatch) imei = imeiMatch[1].trim();
+
+    const modelMatch = remarks.match(/Model:\s*([^\n\r,]+)/i);
+    if (modelMatch) model = modelMatch[1].trim();
+  }
+
+  if (itemText) {
+    if (!imei) {
+      const imeiMatch = itemText.match(/IMEI(?:\s*Number)?:\s*([^\n\r,]+)/i);
+      if (imeiMatch) imei = imeiMatch[1].trim();
+    }
+    if (!model) {
+      const modelMatch = itemText.match(/Model:\s*([^,\n\r]+)/i);
+      if (modelMatch) {
+        model = modelMatch[1].trim();
+      } else if (imei) {
+        const beforeImei = itemText.split(/IMEI/i)[0].trim();
+        if (beforeImei) model = beforeImei.replace(/,\s*$/, '').trim();
+      } else {
+        model = itemText;
+      }
+    }
+  }
+
+  return {
+    model: model || '-',
+    imei: (imei && imei.toLowerCase() !== 'nill' && imei.toLowerCase() !== 'null') ? imei : '-'
+  };
+};
+
+export const fetchPhonePurchases = async () => {
+  const phoneProjectNames = ['PROJ-0792', 'PROJ-0793', 'PROJ-0794'];
+  try {
+    const [piRes, prRes] = await Promise.all([
+      fetch(`${API_URL}/api/resource/Purchase Invoice?fields=["name","project","supplier","posting_date","grand_total","remarks","company","docstatus"]&limit_page_length=0&order_by=creation desc`, {
+        headers: getHeaders(),
+        credentials: 'omit',
+      }),
+      fetch(`${API_URL}/api/resource/Purchase Receipt?fields=["name","project","supplier","posting_date","grand_total","remarks","company","docstatus"]&limit_page_length=0&order_by=creation desc`, {
+        headers: getHeaders(),
+        credentials: 'omit',
+      })
+    ]);
+
+    const piData = (await piRes.json()).data || [];
+    const prData = (await prRes.json()).data || [];
+
+    const phonePIs = piData.filter(pi => 
+      phoneProjectNames.includes(pi.project) || (pi.remarks && /IMEI/i.test(pi.remarks))
+    );
+
+    const phonePRs = prData.filter(pr => 
+      phoneProjectNames.includes(pr.project) || (pr.remarks && /IMEI/i.test(pr.remarks))
+    );
+
+    const enrichedPIs = await Promise.all(phonePIs.map(async (pi) => {
+      let itemText = '';
+      let linkedPr = null;
+
+      if (!pi.remarks || pi.remarks === 'No Remarks' || !/Model:/i.test(pi.remarks) || !/IMEI/i.test(pi.remarks)) {
+        try {
+          const r = await fetch(`${API_URL}/api/resource/Purchase Invoice/${encodeURIComponent(pi.name)}`, {
+            headers: getHeaders(),
+            credentials: 'omit',
+          });
+          if (r.ok) {
+            const d = await r.json();
+            if (d.data?.items?.[0]) {
+              const item = d.data.items[0];
+              itemText = item.description || item.item_name || item.item_code || '';
+              linkedPr = item.purchase_receipt || null;
+            }
+          }
+        } catch (e) {
+          console.warn("Error fetching PI details for " + pi.name, e);
+        }
+      }
+
+      const { model, imei } = parsePhoneDetails(pi.remarks, itemText);
+      return {
+        ...pi,
+        record_type: 'Purchase Invoice',
+        model,
+        imei,
+        linked_pr: linkedPr,
+        item_text: itemText
+      };
+    }));
+
+    const linkedPrNames = new Set(enrichedPIs.map(pi => pi.linked_pr).filter(Boolean));
+
+    const standalonePRs = await Promise.all(
+      phonePRs.filter(pr => !linkedPrNames.has(pr.name)).map(async (pr) => {
+        let itemText = '';
+        if (!pr.remarks || !/Model:/i.test(pr.remarks) || !/IMEI/i.test(pr.remarks)) {
+          try {
+            const r = await fetch(`${API_URL}/api/resource/Purchase Receipt/${encodeURIComponent(pr.name)}`, {
+              headers: getHeaders(),
+              credentials: 'omit',
+            });
+            if (r.ok) {
+              const d = await r.json();
+              if (d.data?.items?.[0]) {
+                const item = d.data.items[0];
+                itemText = item.description || item.item_name || item.item_code || '';
+              }
+            }
+          } catch (e) {
+            console.warn("Error fetching PR details for " + pr.name, e);
+          }
+        }
+        const { model, imei } = parsePhoneDetails(pr.remarks, itemText);
+        return {
+          ...pr,
+          record_type: 'Purchase Receipt',
+          model,
+          imei,
+          item_text: itemText
+        };
+      })
+    );
+
+    return [...enrichedPIs, ...standalonePRs];
+  } catch (error) {
+    console.error("Error fetching phone purchases", error);
     return [];
   }
 };
