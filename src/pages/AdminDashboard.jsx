@@ -60,13 +60,15 @@ const AdminDashboard = () => {
           // Calculate pending repairs (only count strictly 'Open' projects)
           if (p.status === 'Open') {
             pendingRepairs++;
+            const rawStatus = extractNote(p.notes, 'Status') || p.status || 'Open';
+            const cleanStatus = rawStatus.replace(/[^\x20-\x7E]/g, '').replace(/=\w+/g, '').trim() || 'Open';
             pendingList.push({
               code: (p.project_name || '').trim().split(/\s+/)[0] || '-',
               name: (p.project_name || '').trim().split(/\s+/).slice(1).join(' ') || '-',
               phone: p.custom_phone || extractNote(p.notes, 'Phone') || '-',
               model: p.custom_model_name || '-',
               branch: p.company || 'INEX',
-              status: extractNote(p.notes, 'Status') || p.status || 'Open'
+              status: cleanStatus
             });
           }
           
@@ -124,15 +126,16 @@ const AdminDashboard = () => {
     doc.setLineWidth(0.5);
     doc.line(14, 38, 196, 38);
 
-    // Table
+    // Table — sanitize all cells to strip emojis/non-ASCII for PDF safety
+    const sanitize = (val) => String(val || '-').replace(/[^\x20-\x7E]/g, '').trim() || '-';
     const tableData = pendingRepairsList.map((item, index) => [
       index + 1,
-      item.code,
-      item.name,
-      item.phone || '-',
-      item.model || '-',
-      item.branch || '-',
-      item.status || 'Open'
+      sanitize(item.code),
+      sanitize(item.name),
+      sanitize(item.phone),
+      sanitize(item.model),
+      sanitize(item.branch),
+      sanitize(item.status)
     ]);
 
     autoTable(doc, {
@@ -161,25 +164,15 @@ const AdminDashboard = () => {
     const safeDate = currentDate.replace(/\//g, '-');
     const fileName = `Pending_Repairs_All_Branches_${safeDate}.pdf`;
 
-    try {
+    if (openInNewTab) {
+      // View PDF: open in new tab using blob URL
       const blob = doc.output('blob');
       const pdfBlob = new Blob([blob], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(pdfBlob);
-
-      if (openInNewTab) {
-        window.open(blobUrl, '_blank');
-      } else {
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = fileName;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      window.open(blobUrl, '_blank');
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    } catch (e) {
-      console.warn("Direct blob download failed, falling back to doc.save:", e);
+    } else {
+      // Download PDF: jsPDF built-in save guarantees correct .pdf filename
       doc.save(fileName);
     }
   };
