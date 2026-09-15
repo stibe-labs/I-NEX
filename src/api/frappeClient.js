@@ -554,6 +554,24 @@ export const updatePurchaseReceipt = async (receiptId, receiptData) => {
   }
 };
 
+export const cancelPurchaseReceipt = async (receiptId) => {
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt/${encodeURIComponent(receiptId)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify({ docstatus: 2 }),
+    });
+    if (!res.ok) {
+      throw await extractFrappeError(res, 'Failed to cancel Purchase Receipt');
+    }
+    return true;
+  } catch (error) {
+    console.error("Error canceling Purchase Receipt", error);
+    throw error;
+  }
+};
+
 export const deletePurchaseReceipt = async (receiptId) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Purchase Receipt/${encodeURIComponent(receiptId)}`, {

@@ -6,6 +6,9 @@ import {
   createPurchaseReceipt, 
   createSalesInvoice,
   updatePurchaseReceipt,
+  updateSalesInvoice,
+  cancelPurchaseReceipt,
+  cancelSalesInvoice,
   ensureSupplier,
   ensureCustomer,
   ensureItem,
@@ -225,7 +228,17 @@ const PhonePurchaseSale = () => {
         };
 
         if (editId) {
-          await updatePurchaseReceipt(editId, invoiceData);
+          try {
+            await updatePurchaseReceipt(editId, invoiceData);
+          } catch (updateErr) {
+            if (updateErr.message && /not allowed to change|updateaftersubmit|cannot update/i.test(updateErr.message)) {
+              await cancelPurchaseReceipt(editId);
+              try { await deletePurchaseReceipt(editId); } catch (delErr) { console.warn(delErr); }
+              await createPurchaseReceipt(invoiceData);
+            } else {
+              throw updateErr;
+            }
+          }
           toast.success("Purchase Updated!");
         } else {
           await createPurchaseReceipt(invoiceData);
@@ -250,8 +263,23 @@ const PhonePurchaseSale = () => {
           remarks: remarks
         };
 
-        await createSalesInvoice(invoiceData);
-        toast.success("Sale Saved!");
+        if (editId) {
+          try {
+            await updateSalesInvoice(editId, invoiceData);
+          } catch (updateErr) {
+            if (updateErr.message && /not allowed to change|updateaftersubmit|cannot update/i.test(updateErr.message)) {
+              await cancelSalesInvoice(editId);
+              try { await deleteSalesInvoice(editId); } catch (delErr) { console.warn(delErr); }
+              await createSalesInvoice(invoiceData);
+            } else {
+              throw updateErr;
+            }
+          }
+          toast.success("Sale Updated!");
+        } else {
+          await createSalesInvoice(invoiceData);
+          toast.success("Sale Saved!");
+        }
       }
 
       await loadData();
@@ -268,9 +296,19 @@ const PhonePurchaseSale = () => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       try {
         if (activeTab === 'purchases') {
-          await deletePurchaseReceipt(id);
+          try {
+            await deletePurchaseReceipt(id);
+          } catch (delErr) {
+            await cancelPurchaseReceipt(id);
+            await deletePurchaseReceipt(id);
+          }
         } else {
-          await deleteSalesInvoice(id);
+          try {
+            await deleteSalesInvoice(id);
+          } catch (delErr) {
+            await cancelSalesInvoice(id);
+            await deleteSalesInvoice(id);
+          }
         }
         toast.success("Entry deleted successfully!");
         setOpenMenuId(null);
@@ -291,6 +329,30 @@ const PhonePurchaseSale = () => {
     if (!remarks) return '-';
     const match = remarks.match(/Model:\s*([^\n\r]+)/i);
     return match ? match[1].trim() : '-';
+  };
+
+  const handleEdit = (r) => {
+    const rawDate = r.posting_date ? r.posting_date.split('T')[0].split(' ')[0] : new Date().toISOString().split('T')[0];
+    const party = activeTab === 'purchases' ? (r.supplier || '') : (r.customer || '');
+    const model = getModelFromRemarks(r.remarks);
+    const imei = extractIMEI(r.remarks);
+    
+    // Resolve project for record
+    const matchedProj = phoneProjects.find(p => p.name === r.project || getBranchFromProject(p) === getBranchFromRecord(r));
+    const targetProjId = matchedProj?.name || r.project || (user?.role === 'admin' ? '' : (getUserBranchProject()?.name || ''));
+
+    setFormData({
+      date: rawDate,
+      branch_project: targetProjId,
+      party_name: party,
+      model: model !== '-' ? model : '',
+      imei: imei !== '-' ? imei : '',
+      amount: r.grand_total ? String(r.grand_total) : ''
+    });
+    setEditId(r.name);
+    setIsAdding(true);
+    setOpenMenuId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Filter records so that ONLY Phone Purchase & Sales records are shown
@@ -365,23 +427,23 @@ const PhonePurchaseSale = () => {
         <button 
           className={`btn ${activeTab === 'purchases' ? 'btn-primary' : ''}`}
           style={activeTab !== 'purchases' ? { background: 'transparent', color: '#666', border: 'none', boxShadow: 'none' } : {}}
-          onClick={() => { setActiveTab('purchases'); setIsAdding(false); }}
+          onClick={() => { setActiveTab('purchases'); setIsAdding(false); handleClear(); }}
         >
           Purchases
         </button>
         <button 
           className={`btn ${activeTab === 'sales' ? 'btn-primary' : ''}`}
           style={activeTab !== 'sales' ? { background: 'transparent', color: '#666', border: 'none', boxShadow: 'none' } : {}}
-          onClick={() => { setActiveTab('sales'); setIsAdding(false); }}
+          onClick={() => { setActiveTab('sales'); setIsAdding(false); handleClear(); }}
         >
           Sales
         </button>
       </div>
 
-      {/* New Entry Form */}
+      {/* Entry Form */}
       {isAdding && (
         <div className="glass-card" style={{ marginBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
-          <h3 style={{ marginBottom: '1.5rem', textTransform: 'capitalize' }}>New {activeTab.slice(0, -1)} Entry</h3>
+          <h3 style={{ marginBottom: '1.5rem', textTransform: 'capitalize' }}>{editId ? 'Edit' : 'New'} {activeTab.slice(0, -1)} Entry</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             
             <div className="input-group">
@@ -469,7 +531,7 @@ const PhonePurchaseSale = () => {
           
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-              <Save size={18} /> {isSaving ? 'Saving...' : 'Save Entry'}
+              <Save size={18} /> {isSaving ? 'Saving...' : (editId ? 'Update Entry' : 'Save Entry')}
             </button>
             <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={() => { setIsAdding(false); handleClear(); }}>
               <X size={18} /> Cancel
@@ -556,10 +618,16 @@ const PhonePurchaseSale = () => {
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                             borderRadius: '8px',
                             zIndex: 100,
-                            minWidth: '100px',
+                            minWidth: '110px',
                             overflow: 'hidden'
                           }}
                         >
+                          <button 
+                            onClick={() => handleEdit(r)}
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-main)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}
+                          >
+                            <Edit size={14} /> Edit
+                          </button>
                           <button 
                             onClick={() => handleDelete(r.name)}
                             style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ff6b6b' }}
