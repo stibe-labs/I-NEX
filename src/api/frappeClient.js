@@ -1042,8 +1042,9 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
 
     // If a quantity is provided, try to set it as the opening stock
     if (quantity !== undefined && quantity !== null && quantity !== '') {
-      payload.opening_stock = parseFloat(quantity) || 0;
-      payload.valuation_rate = 0; // Usually required when setting opening stock
+      const qty = parseFloat(quantity) || 0;
+      payload.opening_stock = qty;
+      payload.valuation_rate = qty > 0 ? 1 : 0; // ERPNext requires valuation_rate > 0 if opening_stock > 0
       payload.standard_rate = 0;
       payload.custom_unit_qty = quantity.toString(); // Save to custom field
     }
