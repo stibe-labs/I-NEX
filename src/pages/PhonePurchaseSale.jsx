@@ -40,9 +40,17 @@ const PhonePurchaseSale = () => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
 
+  const getTodayDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDate(),
     branch_project: '', // Stores project name (e.g. PROJ-0792)
     party_name: '', // Supplier for Purchases, Customer for Sales
     model: '',
@@ -144,7 +152,7 @@ const PhonePurchaseSale = () => {
   const handleClear = () => {
     const defaultBranchProj = user?.role === 'admin' ? '' : (getUserBranchProject()?.name || '');
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDate(),
       branch_project: defaultBranchProj,
       party_name: '',
       model: '',
@@ -157,7 +165,7 @@ const PhonePurchaseSale = () => {
   const handleOpenAdd = () => {
     const defaultBranchProj = user?.role === 'admin' ? '' : (getUserBranchProject()?.name || '');
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDate(),
       branch_project: defaultBranchProj,
       party_name: '',
       model: '',
@@ -219,6 +227,9 @@ const PhonePurchaseSale = () => {
           project: project.name,
           company: company,
           posting_date: formData.date,
+          posting_time: "12:00:00",
+          set_posting_time: 1,
+          due_date: formData.date,
           items: [{
             item_code: itemCode,
             qty: 1,
@@ -289,6 +300,9 @@ const PhonePurchaseSale = () => {
           project: project.name,
           company: company,
           posting_date: formData.date,
+          posting_time: "12:00:00",
+          set_posting_time: 1,
+          due_date: formData.date,
           items: [{
             item_code: itemCode,
             qty: 1,
@@ -386,7 +400,7 @@ const PhonePurchaseSale = () => {
   };
 
   const handleEdit = (r) => {
-    const rawDate = r.posting_date ? r.posting_date.split('T')[0].split(' ')[0] : new Date().toISOString().split('T')[0];
+    const rawDate = r.posting_date ? r.posting_date.split('T')[0].split(' ')[0] : getTodayDate();
     const party = activeTab === 'purchases' ? (r.supplier || '') : (r.customer || '');
     const { model, imei } = getRecordDetails(r);
     
@@ -504,7 +518,7 @@ const PhonePurchaseSale = () => {
             
             <div className="input-group">
               <label>Date</label>
-              <input type="date" className="input-field" value={formData.date} onChange={e => handleInputChange('date', e.target.value)} required />
+              <input type="date" className="input-field" value={formData.date || ''} onChange={e => handleInputChange('date', e.target.value)} required />
             </div>
 
             {/* Admin sees dropdown to pick branch project; Branch user gets default set automatically */}
@@ -641,8 +655,17 @@ const PhonePurchaseSale = () => {
               {displayRecords.map((r, i) => {
                 const projName = projects.find(p => p.name === r.project)?.project_name || r.project || '-';
                 
-                const dateObj = new Date(r.posting_date);
-                const dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                let dateString = '-';
+                if (r.posting_date) {
+                  const pDate = r.posting_date.split('T')[0].split(' ')[0];
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(pDate)) {
+                    const [y, m, d] = pDate.split('-');
+                    dateString = `${d}/${m}/${y}`;
+                  } else {
+                    const dateObj = new Date(r.posting_date);
+                    dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                  }
+                }
                 
                 const party = activeTab === 'purchases' ? r.supplier : r.customer;
                 const { model, imei } = getRecordDetails(r);

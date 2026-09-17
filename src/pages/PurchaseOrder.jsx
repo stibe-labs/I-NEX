@@ -31,9 +31,17 @@ const PurchaseOrder = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getTodayDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Form State matching requested inputs
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDate(),
     code: '',
     customer_name: '',
     supplier_name: '',
@@ -134,6 +142,7 @@ const PurchaseOrder = () => {
           const projectData = {
               project_name: projectName,
               company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+              expected_start_date: formData.date || undefined,
               status: 'Completed',
           };
           const createdProj = await createProject(projectData);
@@ -287,7 +296,7 @@ const PurchaseOrder = () => {
 
   const handleClear = () => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDate(),
       code: '',
       customer_name: '',
       supplier_name: '',
@@ -303,7 +312,7 @@ const PurchaseOrder = () => {
 
   const handleEdit = (invoice, code, custName) => {
     setFormData({
-      date: invoice.posting_date || new Date().toISOString().split('T')[0],
+      date: invoice.posting_date || getTodayDate(),
       code: code,
       customer_name: custName,
       supplier_name: invoice.supplier || '',
@@ -458,7 +467,7 @@ const PurchaseOrder = () => {
             
             <div className="input-group">
               <label>Date</label>
-              <input type="date" className="input-field" value={formData.date} onChange={e => handleInputChange('date', e.target.value)} required />
+              <input type="date" className="input-field" value={formData.date || ''} onChange={e => handleInputChange('date', e.target.value)} required />
             </div>
             <div className="input-group">
               <label>CODE</label>
@@ -574,8 +583,17 @@ const PurchaseOrder = () => {
                     }
                 }
                 
-                const dateObj = new Date(p.posting_date);
-                const dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                let dateString = '-';
+                if (p.posting_date) {
+                  const pDate = p.posting_date.split('T')[0].split(' ')[0];
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(pDate)) {
+                    const [y, m, d] = pDate.split('-');
+                    dateString = `${d}/${m}/${y}`;
+                  } else {
+                    const dateObj = new Date(p.posting_date);
+                    dateString = isNaN(dateObj) ? '' : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+                  }
+                }
 
                 return (
                   <tr key={p.name || i}>

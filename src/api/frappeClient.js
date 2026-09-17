@@ -379,13 +379,28 @@ export const ensureExactItem = async (itemName) => {
   }
 };
 
+const ensurePostingDateTime = (data) => {
+  if (!data) return data;
+  const payload = { ...data };
+  if (payload.posting_date) {
+    payload.set_posting_time = 1;
+    if (!payload.posting_time) {
+      payload.posting_time = '12:00:00';
+    }
+    if (!payload.due_date) {
+      payload.due_date = payload.posting_date;
+    }
+  }
+  return payload;
+};
+
 export const createSalesInvoice = async (invoiceData) => {
   try {
     const res = await fetch(`${API_URL}/api/resource/Sales Invoice`, {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify(ensurePostingDateTime(invoiceData)),
     });
     
     if (!res.ok) {
@@ -406,7 +421,7 @@ export const updateSalesInvoice = async (invoiceId, invoiceData) => {
       method: 'PUT',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify(ensurePostingDateTime(invoiceData)),
     });
     
     if (!res.ok) {
@@ -526,7 +541,7 @@ export const createPurchaseReceipt = async (receiptData) => {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(receiptData),
+      body: JSON.stringify(ensurePostingDateTime(receiptData)),
     });
     
     if (!res.ok) {
@@ -562,7 +577,7 @@ export const updatePurchaseReceipt = async (receiptId, receiptData) => {
       method: 'PUT',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(receiptData),
+      body: JSON.stringify(ensurePostingDateTime(receiptData)),
     });
     
     if (!res.ok) {
@@ -618,7 +633,7 @@ export const createPurchaseInvoice = async (invoiceData) => {
       method: 'POST',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify(ensurePostingDateTime(invoiceData)),
     });
     
     if (!res.ok) {
@@ -639,7 +654,7 @@ export const updatePurchaseInvoice = async (invoiceId, invoiceData) => {
       method: 'PUT',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify(ensurePostingDateTime(invoiceData)),
     });
     
     if (!res.ok) {
