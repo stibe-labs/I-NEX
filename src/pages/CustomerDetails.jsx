@@ -338,6 +338,14 @@ const CustomerDetails = () => {
            statusStr.includes(term);
   });
 
+  // Sort projects: latest entry first (latest entried customer/code first)
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    const timeA = new Date(a.creation || 0).getTime();
+    const timeB = new Date(b.creation || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.name || '').localeCompare(a.name || '');
+  });
+
   const handleInputChange = (field, value) => {
     setFormData(prev => {
       const next = { ...prev, [field]: value };
@@ -658,7 +666,7 @@ const CustomerDetails = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredProjects.map((p, i) => {
+              {sortedProjects.map((p, i) => {
                 // Parse project_name (e.g. "104691 Shamzad") into Code and Name
                 // using trim and regex to handle accidental double spaces or leading spaces from Frappe
                 const nameParts = (p.project_name || '').trim().split(/\s+/);

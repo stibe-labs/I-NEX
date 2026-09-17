@@ -109,6 +109,14 @@ const DayBook = () => {
     return nameStr.includes(term) || modelStr.includes(term) || technicianStr.includes(term) || receiverStr.includes(term);
   });
 
+  // Sort projects: latest entry first (latest entried Day Book record/code first)
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    const timeA = new Date(a.modified || a.creation || 0).getTime();
+    const timeB = new Date(b.modified || b.creation || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.name || '').localeCompare(a.name || '');
+  });
+
   useEffect(() => {
     loadData();
   }, []);
@@ -118,8 +126,8 @@ const DayBook = () => {
     let isMounted = true;
     
     const fetchMissingConsumptions = async () => {
-      // Find projects currently rendered that have missing consumption
-      const projectsToFetch = filteredProjects.filter(p => {
+      // Find projects currently rendered that have missing consumption (in order of display)
+      const projectsToFetch = sortedProjects.filter(p => {
         const ed = enrichedData[p.name];
         if (!ed || !ed.hasInvoiceData || !ed.invoiceNames || ed.invoiceNames.length === 0) return false;
         
@@ -907,7 +915,7 @@ const DayBook = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredProjects.map((p, i) => {
+              {sortedProjects.map((p, i) => {
                 // Parse project_name (e.g. "104691 Shamzad") into Code and Name
                 // using trim and regex to handle accidental double spaces or leading spaces from Frappe
                 const nameParts = (p.project_name || '').trim().split(/\s+/);
