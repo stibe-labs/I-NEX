@@ -725,13 +725,11 @@ const DayBook = () => {
       if (match) {
         const nameParts = (match.project_name || '').trim().split(/\s+/);
         const name = nameParts.slice(1).join(' ') || '';
-        const matchDate = match.expected_start_date || extractNote(match.notes, 'Date');
         
         setFormData(prev => ({
           ...prev,
           customer_name: name || '',
-          model_name: match.custom_model_name || '',
-          ...(matchDate ? { date: matchDate } : {})
+          model_name: match.custom_model_name || ''
         }));
         
         // This makes sure we update the existing job card instead of creating a duplicate!
@@ -782,7 +780,7 @@ const DayBook = () => {
               <input 
                 type="date" 
                 className="input-field" 
-                value={formData.date || getTodayDate()} 
+                value={formData.date || ''} 
                 onChange={e => handleInputChange('date', e.target.value)} 
                 required 
               />

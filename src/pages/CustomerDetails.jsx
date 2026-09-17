@@ -146,19 +146,6 @@ const CustomerDetails = () => {
                              ? `\nPhone: ${formData.phone_no}` : '';
 
       const projectName = `${formData.code} ${formData.name}`;
-      const projectData = {
-        project_name: projectName,
-        company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
-        // We omit status here and add it only for new projects below
-        // status: 'Open',
-        expected_start_date: formData.date || undefined,
-        custom_phone: phoneToSave,
-        custom_model_name: formData.model,
-        custom_imei_number: formData.imei_no,
-        // Pack the rest into notes
-        notes: `Date: ${formData.date || ''}\nComplaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}\nStatus: ${formData.status || '🟡 Pending'}${notesPhoneStr}`
-      };
-      
       let actualEditProjectId = editProjectId;
       
       if (!actualEditProjectId) {
@@ -171,6 +158,38 @@ const CustomerDetails = () => {
           actualEditProjectId = existingProject.name;
         }
       }
+
+      const existingProj = actualEditProjectId ? projects.find(p => p.name === actualEditProjectId) : null;
+      const existingNotes = existingProj?.notes || '';
+      const consumption = extractNote(existingNotes, 'Consumption');
+      const warranty = extractNote(existingNotes, 'Warranty');
+      const cash = extractNote(existingNotes, 'Cash');
+      const bank = extractNote(existingNotes, 'Bank');
+      const credit = extractNote(existingNotes, 'Credit');
+      const cost = extractNote(existingNotes, 'Cost');
+      const profit = extractNote(existingNotes, 'Profit');
+
+      let dayBookNotesStr = '';
+      if (consumption) dayBookNotesStr += `\nConsumption: ${consumption}`;
+      if (warranty) dayBookNotesStr += `\nWarranty: ${warranty}`;
+      if (cash) dayBookNotesStr += `\nCash: ${cash}`;
+      if (bank) dayBookNotesStr += `\nBank: ${bank}`;
+      if (credit) dayBookNotesStr += `\nCredit: ${credit}`;
+      if (cost) dayBookNotesStr += `\nCost: ${cost}`;
+      if (profit) dayBookNotesStr += `\nProfit: ${profit}`;
+
+      const projectData = {
+        project_name: projectName,
+        company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+        // We omit status here and add it only for new projects below
+        // status: 'Open',
+        expected_start_date: formData.date || undefined,
+        custom_phone: phoneToSave,
+        custom_model_name: formData.model,
+        custom_imei_number: formData.imei_no,
+        // Pack the rest into notes
+        notes: `Date: ${formData.date || ''}\nComplaint: ${formData.complaint}\nPasscode: ${formData.passcode}\nReceiver: ${formData.receiver}\nTechnician: ${formData.technician}\nSource: ${formData.source}\nDelivery: ${formData.delivery}\nAmount: ${formData.amount}\nStatus: ${formData.status || '🟡 Pending'}${notesPhoneStr}${dayBookNotesStr}`
+      };
       
       if (actualEditProjectId) {
         await updateProject(actualEditProjectId, projectData);
@@ -368,9 +387,7 @@ const CustomerDetails = () => {
           const nameParts = (match.project_name || '').trim().split(/\s+/);
           const name = nameParts.slice(1).join(' ') || '';
           const mPhone = match.custom_phone || extractNote(match.notes, 'Phone');
-          const mDate = match.expected_start_date || extractNote(match.notes, 'Date') || (match.creation ? match.creation.split(' ')[0] : '');
           
-          if (mDate) next.date = mDate;
           next.name = name;
           next.phone_no = mPhone || '+91-';
           next.model = match.custom_model_name || '';
@@ -378,7 +395,6 @@ const CustomerDetails = () => {
           next.status = extractNote(match.notes, 'Status') || '🟡 Pending';
         } else {
           if (field === 'code') {
-            next.date = getTodayDate();
             next.name = '';
             next.phone_no = '+91-';
             next.model = '';
@@ -454,7 +470,7 @@ const CustomerDetails = () => {
               <input 
                 type="date" 
                 className="input-field" 
-                value={formData.date || getTodayDate()} 
+                value={formData.date || ''} 
                 onChange={e => handleInputChange('date', e.target.value)} 
                 required 
               />
