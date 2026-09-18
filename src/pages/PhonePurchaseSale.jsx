@@ -426,12 +426,15 @@ const PhonePurchaseSale = () => {
   const filterRecords = (records) => {
     const phoneProjectNames = phoneProjects.map(p => p.name);
     return records.filter(record => {
-      // Must be linked to a phone purchase & sales project or have IMEI/Model
+      // Exclude Day Book generated entries
+      if (record.remarks && record.remarks.includes('Automatically generated from Day Book Entry')) {
+        return false;
+      }
+
+      // Must be linked to a phone purchase & sales project, or have valid phone model & IMEI
       const { model, imei } = getRecordDetails(record);
       const isPhoneRecord = phoneProjectNames.includes(record.project) || 
-                            (record.remarks && /IMEI/i.test(record.remarks)) ||
-                            (model && model !== '-') ||
-                            (imei && imei !== '-');
+                            (model && model !== '-' && imei && imei !== '-');
       if (!isPhoneRecord) return false;
 
       const recordProject = projects.find(p => p.name === record.project);

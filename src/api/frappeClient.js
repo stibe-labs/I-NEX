@@ -748,9 +748,12 @@ export const parsePhoneDetails = (remarks, itemText = '') => {
     }
   }
 
+  const cleanImei = (imei && !['nill', 'null', 'n/a', 'na', '-'].includes(imei.toLowerCase().trim())) ? imei.trim() : '-';
+  const cleanModel = (model && !['nill', 'null', 'n/a', 'na', '-'].includes(model.toLowerCase().trim())) ? model.trim() : '-';
+
   return {
-    model: model || '-',
-    imei: (imei && imei.toLowerCase() !== 'nill' && imei.toLowerCase() !== 'null') ? imei : '-'
+    model: cleanModel,
+    imei: cleanImei
   };
 };
 
@@ -772,11 +775,13 @@ export const fetchPhonePurchases = async () => {
     const prData = (await prRes.json()).data || [];
 
     const phonePIs = piData.filter(pi => 
-      phoneProjectNames.includes(pi.project) || (pi.remarks && /IMEI/i.test(pi.remarks))
+      !pi.remarks?.includes('Automatically generated from Day Book Entry') &&
+      (phoneProjectNames.includes(pi.project) || (pi.remarks && /IMEI/i.test(pi.remarks)))
     );
 
     const phonePRs = prData.filter(pr => 
-      phoneProjectNames.includes(pr.project) || (pr.remarks && /IMEI/i.test(pr.remarks))
+      !pr.remarks?.includes('Automatically generated from Day Book Entry') &&
+      (phoneProjectNames.includes(pr.project) || (pr.remarks && /IMEI/i.test(pr.remarks)))
     );
 
     const enrichedPIs = await Promise.all(phonePIs.map(async (pi) => {
