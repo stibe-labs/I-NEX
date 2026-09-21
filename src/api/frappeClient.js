@@ -370,7 +370,29 @@ export const ensureExactItem = async (itemName) => {
     });
     if (res.ok) {
       const data = await res.json();
-      return data.data?.name || data.data?.item_code || itemCode;
+      const createdName = data.data?.name || data.data?.item_code;
+
+      // If Frappe assigned a naming series like STO-ITEM-..., rename it to itemCode so Frappe shows Model+IMEI
+      if (createdName && createdName !== itemCode && createdName.startsWith('STO-ITEM-')) {
+        try {
+          const renameRes = await fetch(`${API_URL}/api/method/frappe.client.rename_doc`, {
+            method: 'POST',
+            headers: getHeaders(),
+            credentials: 'omit',
+            body: JSON.stringify({
+              doctype: 'Item',
+              old_name: createdName,
+              new_name: itemCode
+            })
+          });
+          if (renameRes.ok) {
+            return itemCode;
+          }
+        } catch (renameErr) {
+          console.warn("Failed to rename item:", renameErr);
+        }
+      }
+      return createdName || itemCode;
     }
     return 'Service';
   } catch (error) {

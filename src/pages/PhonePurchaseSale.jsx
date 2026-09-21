@@ -235,11 +235,12 @@ const PhonePurchaseSale = () => {
           due_date: formData.date,
           items: [{
             item_code: itemCode,
+            item_name: rawItemName,
             qty: 1,
             rate: rate,
             price_list_rate: rate,
             amount: rate,
-            description: itemDesc,
+            description: rawItemName,
             project: project.name
           }],
           remarks: remarks
@@ -308,11 +309,12 @@ const PhonePurchaseSale = () => {
           due_date: formData.date,
           items: [{
             item_code: itemCode,
+            item_name: rawItemName,
             qty: 1,
             rate: rate,
             price_list_rate: rate,
             amount: rate,
-            description: itemDesc,
+            description: rawItemName,
             project: project.name
           }],
           remarks: remarks
