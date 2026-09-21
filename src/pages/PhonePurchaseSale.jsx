@@ -16,6 +16,7 @@ import {
   cancelSalesInvoice,
   ensureSupplier,
   ensureCustomer,
+  ensureExactItem,
   deletePurchaseReceipt,
   deletePurchaseInvoice,
   deleteSalesInvoice
@@ -213,12 +214,14 @@ const PhonePurchaseSale = () => {
       if (!project) throw new Error("Invalid Branch Project selected");
 
       const company = project.company || (user?.role === 'branch' ? user?.name : 'INEX');
-      const itemCode = 'Service';
-      const rate = parseFloat(formData.amount) || 0;
       const cleanImei = formData.imei ? formData.imei.trim() : '';
       const cleanModel = formData.model ? formData.model.trim() : '';
       const remarks = `Model: ${cleanModel}\nIMEI Number: ${cleanImei || '-'}`;
       const itemDesc = cleanImei ? `Model: ${cleanModel}, IMEI: ${cleanImei}` : `Model: ${cleanModel}`;
+      // Build item name same as old behavior: "MODEL IMEI: IMEI_NUMBER"
+      const rawItemName = cleanImei ? `${cleanModel} IMEI: ${cleanImei}` : cleanModel;
+      const itemCode = await ensureExactItem(rawItemName);
+      const rate = parseFloat(formData.amount) || 0;
 
       if (activeTab === 'purchases') {
         const supplierName = await ensureSupplier(formData.party_name);

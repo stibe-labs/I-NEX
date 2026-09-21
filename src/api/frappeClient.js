@@ -883,12 +883,40 @@ export const fetchPurchaseReceipts = async () => {
 
 export const fetchSalesInvoices = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?fields=["name","project","customer","posting_date","grand_total","remarks","company"]&limit_page_length=0&order_by=creation desc`, {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?fields=["name","project","customer","posting_date","grand_total","remarks","company","docstatus"]&limit_page_length=0&order_by=creation desc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
     const data = await res.json();
-    return data.data || [];
+    const invoices = data.data || [];
+
+    // Enrich each invoice with item details (description/item_name) so parsePhoneDetails can extract model & IMEI
+    const enriched = await Promise.all(invoices.map(async (si) => {
+      // Only fetch full details if remarks don't already contain both Model and IMEI
+      if (!si.remarks || !/Model:/i.test(si.remarks) || !/IMEI/i.test(si.remarks)) {
+        try {
+          const r = await fetch(`${API_URL}/api/resource/Sales Invoice/${encodeURIComponent(si.name)}`, {
+            headers: getHeaders(),
+            credentials: 'omit',
+          });
+          if (r.ok) {
+            const d = await r.json();
+            if (d.data?.items?.[0]) {
+              const item = d.data.items[0];
+              const itemText = item.description || item.item_name || item.item_code || '';
+              const { model, imei } = parsePhoneDetails(si.remarks, itemText);
+              return { ...si, item_text: itemText, model, imei };
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching SI details for ' + si.name, e);
+        }
+      }
+      const { model, imei } = parsePhoneDetails(si.remarks, '');
+      return { ...si, model, imei };
+    }));
+
+    return enriched;
   } catch (error) {
     console.error("Error fetching Sales Invoices", error);
     return [];
