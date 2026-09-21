@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   fetchProjects, 
   fetchPurchaseReceipts, 
-  fetchSalesInvoices,
+  fetchPhoneSales,
   fetchPhonePurchases,
   parsePhoneDetails,
   createPurchaseReceipt, 
@@ -78,7 +78,7 @@ const PhonePurchaseSale = () => {
       const [projData, purchData, salesData] = await Promise.all([
         fetchProjects(),
         fetchPhonePurchases(),
-        fetchSalesInvoices()
+        fetchPhoneSales()
       ]);
       setProjects(projData);
       setPurchases(purchData);

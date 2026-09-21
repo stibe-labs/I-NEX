@@ -888,12 +888,31 @@ export const fetchSalesInvoices = async () => {
       credentials: 'omit',
     });
     const data = await res.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching Sales Invoices", error);
+    return [];
+  }
+};
+
+export const fetchPhoneSales = async () => {
+  const phoneProjectNames = ['PROJ-0792', 'PROJ-0793', 'PROJ-0794'];
+  try {
+    const res = await fetch(`${API_URL}/api/resource/Sales Invoice?fields=["name","project","customer","posting_date","grand_total","remarks","company","docstatus"]&limit_page_length=0&order_by=creation desc`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    const data = await res.json();
     const invoices = data.data || [];
 
-    // Enrich each invoice with item details (description/item_name) so parsePhoneDetails can extract model & IMEI
-    const enriched = await Promise.all(invoices.map(async (si) => {
-      // Only fetch full details if remarks don't already contain both Model and IMEI
-      if (!si.remarks || !/Model:/i.test(si.remarks) || !/IMEI/i.test(si.remarks)) {
+    const phoneSIs = invoices.filter(si => 
+      !si.remarks?.includes('Automatically generated from Day Book Entry') &&
+      (phoneProjectNames.includes(si.project) || (si.remarks && /IMEI/i.test(si.remarks)))
+    );
+
+    const enriched = await Promise.all(phoneSIs.map(async (si) => {
+      let itemText = '';
+      if (!si.remarks || si.remarks === 'No Remarks' || !/Model:/i.test(si.remarks) || !/IMEI/i.test(si.remarks)) {
         try {
           const r = await fetch(`${API_URL}/api/resource/Sales Invoice/${encodeURIComponent(si.name)}`, {
             headers: getHeaders(),
@@ -903,22 +922,20 @@ export const fetchSalesInvoices = async () => {
             const d = await r.json();
             if (d.data?.items?.[0]) {
               const item = d.data.items[0];
-              const itemText = item.description || item.item_name || item.item_code || '';
-              const { model, imei } = parsePhoneDetails(si.remarks, itemText);
-              return { ...si, item_text: itemText, model, imei };
+              itemText = item.description || item.item_name || item.item_code || '';
             }
           }
         } catch (e) {
           console.warn('Error fetching SI details for ' + si.name, e);
         }
       }
-      const { model, imei } = parsePhoneDetails(si.remarks, '');
-      return { ...si, model, imei };
+      const { model, imei } = parsePhoneDetails(si.remarks, itemText);
+      return { ...si, item_text: itemText, model, imei };
     }));
 
     return enriched;
   } catch (error) {
-    console.error("Error fetching Sales Invoices", error);
+    console.error("Error fetching phone sales", error);
     return [];
   }
 };
