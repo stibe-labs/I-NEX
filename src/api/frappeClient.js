@@ -1233,10 +1233,78 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
       }
     }
 
+    // Automatically generate Stock Entry (Material Receipt) if quantity > 0
+    // so it shows in Stock Ledger Entry under the warehouse immediately
+    if (quantity && parseFloat(quantity) > 0) {
+      const finalCode = created.item_code || created.name || itemCode.trim();
+      try {
+        await createStockReceiptForINEXItem({
+          itemCode: finalCode,
+          qty: quantity,
+          warehouse,
+          company: itemCompany
+        });
+      } catch (steErr) {
+        console.warn("Auto stock receipt warning:", steErr);
+      }
+    }
+
     return created;
   } catch (error) {
     console.error("Error creating INEX item", error);
     throw error;
+  }
+};
+
+export const createStockReceiptForINEXItem = async ({ itemCode, qty, warehouse, company }) => {
+  try {
+    const numQty = parseFloat(qty);
+    if (!numQty || numQty <= 0) return null;
+
+    const payload = {
+      doctype: 'Stock Entry',
+      stock_entry_type: 'Material Receipt',
+      purpose: 'Material Receipt',
+      company: company || (warehouse === 'Stores - IT' ? 'INEX Thodupuzha' : 'INEX Accessories'),
+      to_warehouse: warehouse,
+      items: [
+        {
+          item_code: itemCode,
+          qty: numQty,
+          t_warehouse: warehouse,
+          basic_rate: 0,
+          allow_zero_valuation_rate: 1
+        }
+      ]
+    };
+
+    const res = await fetch(`${API_URL}/api/resource/Stock Entry`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      console.warn("Stock Entry draft creation failed", await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const entryName = data.data?.name;
+    if (entryName) {
+      // Submit the Stock Entry so it records immediately in Stock Ledger Entry
+      await fetch(`${API_URL}/api/resource/Stock Entry/${encodeURIComponent(entryName)}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        credentials: 'omit',
+        body: JSON.stringify({ docstatus: 1 })
+      });
+    }
+    return data.data;
+  } catch (err) {
+    console.warn("Could not create stock entry for item " + itemCode, err);
+    return null;
   }
 };
 
