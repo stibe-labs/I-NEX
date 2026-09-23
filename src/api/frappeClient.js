@@ -1070,9 +1070,9 @@ export const enrichProjectsWithFrappeData = async (projects) => {
 // legacyWarehouse: items that were manually created in Frappe under a different
 // warehouse name. We still fetch them so they remain visible in the frontend.
 const INEX_BRANCH_CONFIG = {
-  'INEX Perumbavoor': { prefix: 'IP', warehouse: 'Stores - IA' },
-  'INEX Kaloor':      { prefix: 'IK', warehouse: 'Stores - IA', legacyWarehouse: 'Stores - IK' },
-  'INEX Thodupuzha':  { prefix: 'IT', warehouse: 'Stores - IT' },
+  'INEX Perumbavoor': { prefix: 'IP', warehouse: 'Stores - IA', company: 'INEX Accessories' },
+  'INEX Kaloor':      { prefix: 'IK', warehouse: 'Stores - IA', legacyWarehouse: 'Stores - IK', company: 'INEX Accessories' },
+  'INEX Thodupuzha':  { prefix: 'IT', warehouse: 'Stores - IT', company: 'INEX Thodupuzha' },
 };
 
 export const getINEXBranchConfig = () => INEX_BRANCH_CONFIG;
@@ -1174,8 +1174,9 @@ export const getNextINEXItemId = async (prefix) => {
   }
 };
 
-export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity }) => {
+export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company }) => {
   try {
+    const itemCompany = company || (warehouse === 'Stores - IT' ? 'INEX Thodupuzha' : 'INEX Accessories');
     const payload = {
       item_code: itemCode,
       item_name: itemName,
@@ -1184,7 +1185,7 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
       is_stock_item: 1,
       item_defaults: [
         {
-          company: 'INEX Accessories',
+          company: itemCompany,
           default_warehouse: warehouse
         }
       ]

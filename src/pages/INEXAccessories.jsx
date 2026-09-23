@@ -126,6 +126,7 @@ const INEXAccessories = () => {
           itemName: formData.item_name.trim(),
           uom: 'Nos',
           warehouse: currentConfig.warehouse,
+          company: currentConfig.company,
           quantity: formData.uom.trim()
         });
         toast.success(`Item ${targetId} created successfully!`);
