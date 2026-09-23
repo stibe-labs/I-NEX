@@ -1066,26 +1066,86 @@ export const enrichProjectsWithFrappeData = async (projects) => {
 
 // --- INEX Accessories (Item Management) API ---
 
-// Branch config: prefix and warehouse mapping
+// Branch config: prefix, correct warehouse, and optional legacyWarehouse mapping.
+// legacyWarehouse: items that were manually created in Frappe under a different
+// warehouse name. We still fetch them so they remain visible in the frontend.
 const INEX_BRANCH_CONFIG = {
   'INEX Perumbavoor': { prefix: 'IP', warehouse: 'Stores - IA' },
-  'INEX Kaloor': { prefix: 'IK', warehouse: 'Stores - IA' },
-  'INEX Thodupuzha': { prefix: 'IT', warehouse: 'Stores - IT' },
+  'INEX Kaloor':      { prefix: 'IK', warehouse: 'Stores - IA', legacyWarehouse: 'Stores - IK' },
+  'INEX Thodupuzha':  { prefix: 'IT', warehouse: 'Stores - IT' },
 };
 
 export const getINEXBranchConfig = () => INEX_BRANCH_CONFIG;
 
-export const fetchINEXItems = async (prefix) => {
+// Fetch items for a single warehouse using Frappe Item Default child-table filter.
+// Returns [] on failure (never throws, so callers can safely Promise.all).
+const fetchItemsByWarehouse = async (warehouse) => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Item?filters=[["item_code","like","${prefix}%"]]&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]&limit_page_length=0&order_by=item_code asc`, {
-      headers: getHeaders(),
-      credentials: 'omit',
-    });
-    if (!res.ok) {
-      throw await extractFrappeError(res, 'Failed to fetch INEX items');
-    }
+    const encoded = encodeURIComponent(warehouse);
+    const res = await fetch(
+      `${API_URL}/api/resource/Item?filters=[["Item Default","default_warehouse","=","${encoded}"]]` +
+      `&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]` +
+      `&limit_page_length=0&order_by=item_code asc`,
+      { headers: getHeaders(), credentials: 'omit' }
+    );
+    if (!res.ok) return [];
     const data = await res.json();
     return data.data || [];
+  } catch {
+    return [];
+  }
+};
+
+// Fetch items for a branch using a dual-query strategy:
+//   1. By item_code prefix  (items created via this app — always correctly prefixed)
+//   2. By legacyWarehouse   (items that exist in Frappe with generic names / wrong warehouse)
+// Results are merged and deduplicated by item_code.
+export const fetchINEXItems = async (prefix, warehouse, legacyWarehouse) => {
+  try {
+    // Query 1: prefix-based (primary)
+    const prefixQuery = fetch(
+      `${API_URL}/api/resource/Item` +
+      `?filters=[["item_code","like","${prefix}%"]]` +
+      `&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]` +
+      `&limit_page_length=0&order_by=item_code asc`,
+      { headers: getHeaders(), credentials: 'omit' }
+    ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []);
+
+    // Query 2: legacy warehouse (only when a legacyWarehouse is set for this branch,
+    // e.g. "Stores - IK" for Kaloor where items were manually created in Frappe)
+    const legacyQuery = legacyWarehouse
+      ? fetchItemsByWarehouse(legacyWarehouse)
+      : Promise.resolve([]);
+
+    // Query 3: correct warehouse — only for branches whose warehouse is unique to them
+    // (i.e. NOT "Stores - IA" which is shared by both IP and IK).
+    // This catches items saved directly to the correct warehouse without a prefix.
+    const warehouseIsShared = warehouse === 'Stores - IA'; // shared by IP & IK
+    const warehouseQuery = (!warehouseIsShared && warehouse)
+      ? fetchItemsByWarehouse(warehouse)
+      : Promise.resolve([]);
+
+    const [prefixItems, legacyItems, warehouseItems] = await Promise.all([
+      prefixQuery, legacyQuery, warehouseQuery
+    ]);
+
+    // Merge and deduplicate — prefix items take priority (they have correct metadata)
+    const seen = new Set();
+    const merged = [];
+    for (const item of [...prefixItems, ...legacyItems, ...warehouseItems]) {
+      const key = (item.item_code || '').toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        // Tag items that come from the legacy/wrong warehouse so the UI can flag them
+        const isLegacy = !prefixItems.some(
+          p => (p.item_code || '').toLowerCase() === key
+        ) && legacyWarehouse && legacyItems.some(
+          l => (l.item_code || '').toLowerCase() === key
+        );
+        merged.push({ ...item, _isLegacyWarehouse: isLegacy });
+      }
+    }
+    return merged;
   } catch (error) {
     console.error("Error fetching INEX items", error);
     return [];
@@ -1094,19 +1154,17 @@ export const fetchINEXItems = async (prefix) => {
 
 export const getNextINEXItemId = async (prefix) => {
   try {
+    // Use prefix-only fetch for ID generation (we only want to count prefixed items)
     const items = await fetchINEXItems(prefix);
     let maxNum = 0;
     // Matches prefix followed by optional whitespace and digits (e.g. IP1, IP 17 COVER, IK1, IT1)
-    // Correctly detects existing items up to 17 in Perumbavoor so next ID is IP18
     const regex = new RegExp(`^${prefix}\\s*(\\d+)`, 'i');
     items.forEach(item => {
       const code = (item.item_code || '').trim();
       const match = code.match(regex);
       if (match) {
         const num = parseInt(match[1], 10);
-        if (num > maxNum) {
-          maxNum = num;
-        }
+        if (num > maxNum) maxNum = num;
       }
     });
     return `${prefix}${maxNum + 1}`;
