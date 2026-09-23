@@ -1067,85 +1067,133 @@ export const enrichProjectsWithFrappeData = async (projects) => {
 // --- INEX Accessories (Item Management) API ---
 
 // Branch config: prefix, correct warehouse, and optional legacyWarehouse mapping.
-// legacyWarehouse: items that were manually created in Frappe under a different
-// warehouse name. We still fetch them so they remain visible in the frontend.
+// Branch config: prefix, correct warehouse, and company mapping
 const INEX_BRANCH_CONFIG = {
   'INEX Perumbavoor': { prefix: 'IP', warehouse: 'Stores - IA', company: 'INEX Accessories' },
-  'INEX Kaloor':      { prefix: 'IK', warehouse: 'Stores - IA', legacyWarehouse: 'Stores - IK', company: 'INEX Accessories' },
+  'INEX Kaloor':      { prefix: 'IK', warehouse: 'Stores - IA', company: 'INEX Accessories' },
   'INEX Thodupuzha':  { prefix: 'IT', warehouse: 'Stores - IT', company: 'INEX Thodupuzha' },
 };
 
 export const getINEXBranchConfig = () => INEX_BRANCH_CONFIG;
 
-// Fetch items for a single warehouse using Frappe Item Default child-table filter.
-// Returns [] on failure (never throws, so callers can safely Promise.all).
-const fetchItemsByWarehouse = async (warehouse) => {
+// Fetch items for a branch based on:
+// 1. Live positive stock levels (from Stock Ledger Entry in that warehouse: Stores - IA or Stores - IT)
+// 2. Branch separation rules:
+//    - Perumbavoor (IP): Stores - IA + code/name starting with IP or P (e.g. P101, P450, p258, IP1)
+//    - Kaloor (IK):      Stores - IA + code/name starting with IK, B, or K (e.g. B213, B220, K101, IK1)
+//    - Thodupuzha (IT):  Stores - IT (all active stock, e.g. T092, T123, IT1)
+// 3. Plus any newly created catalog items for that branch prefix (IP*, IK*, IT*)
+export const fetchINEXItems = async (prefix, warehouse) => {
   try {
-    const encoded = encodeURIComponent(warehouse);
-    const res = await fetch(
-      `${API_URL}/api/resource/Item?filters=[["Item Default","default_warehouse","=","${encoded}"]]` +
-      `&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]` +
-      `&limit_page_length=0&order_by=item_code asc`,
-      { headers: getHeaders(), credentials: 'omit' }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data || [];
-  } catch {
-    return [];
-  }
-};
+    const targetWh = warehouse || (prefix === 'IT' ? 'Stores - IT' : 'Stores - IA');
 
-// Fetch items for a branch using a dual-query strategy:
-//   1. By item_code prefix  (items created via this app — always correctly prefixed)
-//   2. By legacyWarehouse   (items that exist in Frappe with generic names / wrong warehouse)
-// Results are merged and deduplicated by item_code.
-export const fetchINEXItems = async (prefix, warehouse, legacyWarehouse) => {
-  try {
-    // Query 1: prefix-based (primary)
-    const prefixQuery = fetch(
-      `${API_URL}/api/resource/Item` +
-      `?filters=[["item_code","like","${prefix}%"]]` +
-      `&fields=["item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]` +
-      `&limit_page_length=0&order_by=item_code asc`,
-      { headers: getHeaders(), credentials: 'omit' }
-    ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []);
+    // Run parallel requests: Item catalog + Stock Ledger Entries for target warehouse
+    const [itemRes, sleRes] = await Promise.all([
+      fetch(
+        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]&limit_page_length=0&order_by=item_code asc`,
+        { headers: getHeaders(), credentials: 'omit' }
+      ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []),
 
-    // Query 2: legacy warehouse (only when a legacyWarehouse is set for this branch,
-    // e.g. "Stores - IK" for Kaloor where items were manually created in Frappe)
-    const legacyQuery = legacyWarehouse
-      ? fetchItemsByWarehouse(legacyWarehouse)
-      : Promise.resolve([]);
-
-    // Query 3: correct warehouse — only for branches whose warehouse is unique to them
-    // (i.e. NOT "Stores - IA" which is shared by both IP and IK).
-    // This catches items saved directly to the correct warehouse without a prefix.
-    const warehouseIsShared = warehouse === 'Stores - IA'; // shared by IP & IK
-    const warehouseQuery = (!warehouseIsShared && warehouse)
-      ? fetchItemsByWarehouse(warehouse)
-      : Promise.resolve([]);
-
-    const [prefixItems, legacyItems, warehouseItems] = await Promise.all([
-      prefixQuery, legacyQuery, warehouseQuery
+      fetch(
+        `${API_URL}/api/resource/Stock Ledger Entry?filters=[["warehouse","=","${encodeURIComponent(targetWh)}"],["is_cancelled","=",0]]&fields=["item_code","actual_qty"]&limit_page_length=0`,
+        { headers: getHeaders(), credentials: 'omit' }
+      ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => [])
     ]);
 
-    // Merge and deduplicate — prefix items take priority (they have correct metadata)
-    const seen = new Set();
-    const merged = [];
-    for (const item of [...prefixItems, ...legacyItems, ...warehouseItems]) {
-      const key = (item.item_code || '').toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        // Tag items that come from the legacy/wrong warehouse so the UI can flag them
-        const isLegacy = !prefixItems.some(
-          p => (p.item_code || '').toLowerCase() === key
-        ) && legacyWarehouse && legacyItems.some(
-          l => (l.item_code || '').toLowerCase() === key
-        );
-        merged.push({ ...item, _isLegacyWarehouse: isLegacy });
+    // Build Item lookup map
+    const itemMap = new Map();
+    for (const it of itemRes) {
+      if (it.item_code) itemMap.set(it.item_code.toLowerCase(), it);
+      if (it.name) itemMap.set(it.name.toLowerCase(), it);
+    }
+
+    // Compute active stock balance per item in target warehouse
+    const stockMap = {};
+    for (const sle of sleRes) {
+      if (sle.item_code) {
+        const codeKey = sle.item_code.toLowerCase();
+        stockMap[codeKey] = (stockMap[codeKey] || 0) + (sle.actual_qty || 0);
       }
     }
-    return merged;
+
+    const seen = new Set();
+    const result = [];
+
+    const formatItem = (item, liveQty) => {
+      const it = { ...item };
+      // If we have live stock balance > 0, reflect it in custom_unit_qty (Unit column)
+      if (liveQty !== undefined && liveQty > 0) {
+        it.custom_unit_qty = liveQty.toString();
+      }
+      return it;
+    };
+
+    if (prefix === 'IP') {
+      // 1. Positive stock in Stores - IA matching IP or P
+      for (const [codeKey, qty] of Object.entries(stockMap)) {
+        if (qty <= 0) continue;
+        const it = itemMap.get(codeKey) || { item_code: codeKey, item_name: codeKey, item_group: 'Products' };
+        const code = it.item_code || '';
+        const name = it.item_name || '';
+        const isMatch = /^(IP|P)\s*\d+/i.test(code) || /^(IP|P)\s*\d+/i.test(name) || /^IP/i.test(code);
+        if (isMatch && !seen.has(codeKey)) {
+          seen.add(codeKey);
+          result.push(formatItem(it, qty));
+        }
+      }
+      // 2. Newly created IP items
+      for (const it of itemRes) {
+        const code = it.item_code || '';
+        const codeKey = code.toLowerCase();
+        if (/^IP/i.test(code) && !seen.has(codeKey)) {
+          seen.add(codeKey);
+          result.push(formatItem(it, stockMap[codeKey]));
+        }
+      }
+    } else if (prefix === 'IK') {
+      // 1. Positive stock in Stores - IA matching IK, B, or K
+      for (const [codeKey, qty] of Object.entries(stockMap)) {
+        if (qty <= 0) continue;
+        const it = itemMap.get(codeKey) || { item_code: codeKey, item_name: codeKey, item_group: 'Products' };
+        const code = it.item_code || '';
+        const name = it.item_name || '';
+        const isMatch = /^(IK|B|K)\s*\d+/i.test(code) || /^(IK|B|K)\s*\d+/i.test(name) || /^IK/i.test(code);
+        if (isMatch && !seen.has(codeKey)) {
+          seen.add(codeKey);
+          result.push(formatItem(it, qty));
+        }
+      }
+      // 2. Newly created IK items
+      for (const it of itemRes) {
+        const code = it.item_code || '';
+        const codeKey = code.toLowerCase();
+        if (/^IK/i.test(code) && !seen.has(codeKey)) {
+          seen.add(codeKey);
+          result.push(formatItem(it, stockMap[codeKey]));
+        }
+      }
+    } else if (prefix === 'IT') {
+      // 1. Positive stock in Stores - IT (all Thodupuzha items, including T...)
+      for (const [codeKey, qty] of Object.entries(stockMap)) {
+        if (qty <= 0) continue;
+        const it = itemMap.get(codeKey) || { item_code: codeKey, item_name: codeKey, item_group: 'Products' };
+        if (!seen.has(codeKey)) {
+          seen.add(codeKey);
+          result.push(formatItem(it, qty));
+        }
+      }
+      // 2. Newly created IT items
+      for (const it of itemRes) {
+        const code = it.item_code || '';
+        const codeKey = code.toLowerCase();
+        if (/^IT/i.test(code) && !seen.has(codeKey)) {
+          seen.add(codeKey);
+          result.push(formatItem(it, stockMap[codeKey]));
+        }
+      }
+    }
+
+    return result;
   } catch (error) {
     console.error("Error fetching INEX items", error);
     return [];

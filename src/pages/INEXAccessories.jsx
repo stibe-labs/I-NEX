@@ -49,8 +49,7 @@ const INEXAccessories = () => {
     try {
       const data = await fetchINEXItems(
         currentConfig.prefix,
-        currentConfig.warehouse,
-        currentConfig.legacyWarehouse
+        currentConfig.warehouse
       );
       setItems(data);
     } catch (e) {
@@ -430,27 +429,6 @@ const INEXAccessories = () => {
           </span>
         </div>
 
-        {/* Legacy warehouse notice */}
-        {items.some(i => i._isLegacyWarehouse) && (
-          <div style={{
-            margin: '0 1.25rem 0.75rem',
-            padding: '0.6rem 1rem',
-            borderRadius: '8px',
-            background: 'rgba(245, 158, 11, 0.08)',
-            border: '1px solid rgba(245, 158, 11, 0.25)',
-            fontSize: '0.82rem',
-            color: '#92400e',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            ⚠️ {items.filter(i => i._isLegacyWarehouse).length} item(s) are still in the old warehouse
-            <strong>{currentConfig?.legacyWarehouse}</strong> — new items will correctly save to
-            <strong>{currentConfig?.warehouse}</strong>.
-            Update these in Frappe to move them to the correct warehouse.
-          </div>
-        )}
-
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
             <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: '0.5rem' }} />
@@ -495,32 +473,16 @@ const INEXAccessories = () => {
                     )}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <span style={{
-                        padding: '0.25rem 0.65rem',
-                        borderRadius: '6px',
-                        background: item.disabled ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                        color: item.disabled ? 'var(--danger-color)' : 'var(--success-color)',
-                        fontSize: '0.8rem',
-                        fontWeight: 600
-                      }}>
-                        {item.disabled ? 'Disabled' : 'Enabled'}
-                      </span>
-                      {item._isLegacyWarehouse && (
-                        <span title={`Item is in old warehouse: ${currentConfig?.legacyWarehouse}`} style={{
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '5px',
-                          background: 'rgba(245, 158, 11, 0.1)',
-                          color: '#b45309',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          letterSpacing: '0.3px',
-                          cursor: 'help'
-                        }}>
-                          Old Warehouse
-                        </span>
-                      )}
-                    </div>
+                    <span style={{
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '6px',
+                      background: item.disabled ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                      color: item.disabled ? 'var(--danger-color)' : 'var(--success-color)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600
+                    }}>
+                      {item.disabled ? 'Disabled' : 'Enabled'}
+                    </span>
                   </td>
                   <td style={{ position: 'relative', textAlign: 'center' }}>
                     <button 
