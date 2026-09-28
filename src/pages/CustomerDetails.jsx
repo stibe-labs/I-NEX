@@ -16,18 +16,18 @@ export const STATUS_OPTIONS = [
 export const normalizeStatus = (status) => {
   if (!status) return '🟡 Pending';
   const trimmed = status.trim();
-  if (trimmed === 'Pending' || trimmed === '🟡 Pending') return '🟡 Pending';
+  if (trimmed === 'Finished' || trimmed === '✅ Finished') return '✅ Finished';
   if (trimmed === 'Contacted' || trimmed === '🔵 Contacted') return '🔵 Contacted';
   if (trimmed === 'On Hold' || trimmed === '🔴 On Hold') return '🔴 On Hold';
-  if (trimmed === 'Finished' || trimmed === '✅ Finished') return '✅ Finished';
   if (trimmed === 'Return' || trimmed === 'Returned' || trimmed === '📦 Return' || trimmed === '📦 Returned') return '📦 Return';
-  return trimmed;
+  // All other old statuses (e.g. 'Ready for Pickup', 'In Progress', 'Waiting for Parts', 'Follow-up', etc.) refresh to '🟡 Pending'
+  return '🟡 Pending';
 };
 
 export const getStatusBadgeStyle = (status) => {
   const s = status ? status.trim() : '';
-  if (s.includes('Pending')) {
-    return { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' };
+  if (s.includes('Finished')) {
+    return { background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' };
   }
   if (s.includes('Contacted')) {
     return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
@@ -35,26 +35,11 @@ export const getStatusBadgeStyle = (status) => {
   if (s.includes('On Hold')) {
     return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' };
   }
-  if (s.includes('Finished')) {
-    return { background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' };
-  }
   if (s.includes('Return')) {
     return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' };
   }
-  // Legacy status support for existing database records
-  if (s.includes('In Progress')) {
-    return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
-  }
-  if (s.includes('Waiting for Parts')) {
-    return { background: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe' };
-  }
-  if (s.includes('Follow-up')) {
-    return { background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' };
-  }
-  if (s.includes('Ready for Pickup')) {
-    return { background: '#dcfce7', color: '#166534', border: '1px solid #86efac' };
-  }
-  return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb' };
+  // Default is Pending (yellow)
+  return { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' };
 };
 
 const getTodayDate = () => {
@@ -565,13 +550,10 @@ const CustomerDetails = () => {
             </div>
             <div className="input-group">
               <label>Status</label>
-              <select className="input-field" value={formData.status} onChange={e => handleInputChange('status', e.target.value)}>
+              <select className="input-field" value={normalizeStatus(formData.status)} onChange={e => handleInputChange('status', e.target.value)}>
                 {STATUS_OPTIONS.map((opt, i) => (
                   <option key={i} value={opt}>{opt}</option>
                 ))}
-                {!STATUS_OPTIONS.includes(formData.status) && formData.status && (
-                  <option value={formData.status}>{formData.status}</option>
-                )}
               </select>
             </div>
           </div>
@@ -798,19 +780,6 @@ const CustomerDetails = () => {
                                   {opt}
                                 </option>
                               ))}
-                              {!STATUS_OPTIONS.includes(currentStatus) && currentStatus && (
-                                <option 
-                                  value={currentStatus}
-                                  style={{
-                                    background: '#ffffff',
-                                    color: '#1f2937',
-                                    fontWeight: '500',
-                                    padding: '6px'
-                                  }}
-                                >
-                                  {currentStatus}
-                                </option>
-                              )}
                             </select>
                           </div>
                         );
