@@ -7,36 +7,54 @@ import { useAuth } from '../App';
 
 export const STATUS_OPTIONS = [
   '🟡 Pending',
-  '🔵 In Progress',
-  '🟣 Waiting for Parts',
-  '🟠 Follow-up',
+  '🔵 Contacted',
   '🔴 On Hold',
-  '🟢 Ready for Pickup',
-  '📦 Returned',
-  '✅ Finished'
+  '✅ Finished',
+  '📦 Return'
 ];
 
+export const normalizeStatus = (status) => {
+  if (!status) return '🟡 Pending';
+  const trimmed = status.trim();
+  if (trimmed === 'Pending' || trimmed === '🟡 Pending') return '🟡 Pending';
+  if (trimmed === 'Contacted' || trimmed === '🔵 Contacted') return '🔵 Contacted';
+  if (trimmed === 'On Hold' || trimmed === '🔴 On Hold') return '🔴 On Hold';
+  if (trimmed === 'Finished' || trimmed === '✅ Finished') return '✅ Finished';
+  if (trimmed === 'Return' || trimmed === 'Returned' || trimmed === '📦 Return' || trimmed === '📦 Returned') return '📦 Return';
+  return trimmed;
+};
+
 export const getStatusBadgeStyle = (status) => {
-  switch (status) {
-    case '🟡 Pending':
-      return { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' };
-    case '🔵 In Progress':
-      return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
-    case '🟣 Waiting for Parts':
-      return { background: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe' };
-    case '🟠 Follow-up':
-      return { background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' };
-    case '🔴 On Hold':
-      return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' };
-    case '🟢 Ready for Pickup':
-      return { background: '#dcfce7', color: '#166534', border: '1px solid #86efac' };
-    case '📦 Returned':
-      return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' };
-    case '✅ Finished':
-      return { background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' };
-    default:
-      return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb' };
+  const s = status ? status.trim() : '';
+  if (s.includes('Pending')) {
+    return { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' };
   }
+  if (s.includes('Contacted')) {
+    return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
+  }
+  if (s.includes('On Hold')) {
+    return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' };
+  }
+  if (s.includes('Finished')) {
+    return { background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' };
+  }
+  if (s.includes('Return')) {
+    return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' };
+  }
+  // Legacy status support for existing database records
+  if (s.includes('In Progress')) {
+    return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
+  }
+  if (s.includes('Waiting for Parts')) {
+    return { background: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe' };
+  }
+  if (s.includes('Follow-up')) {
+    return { background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' };
+  }
+  if (s.includes('Ready for Pickup')) {
+    return { background: '#dcfce7', color: '#166534', border: '1px solid #86efac' };
+  }
+  return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb' };
 };
 
 const getTodayDate = () => {
@@ -268,7 +286,7 @@ const CustomerDetails = () => {
       source: extractNote(p.notes, 'Source') || extractNote(p.notes, 'Update') || '',
       delivery: extractNote(p.notes, 'Delivery') || '',
       branch: p.company || '',
-      status: extractNote(p.notes, 'Status') || '🟡 Pending'
+      status: normalizeStatus(extractNote(p.notes, 'Status')) || '🟡 Pending'
     });
     setEditProjectId(p.name);
     setIsAdding(true);
@@ -325,7 +343,7 @@ const CustomerDetails = () => {
     if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
 
     // Status Filter
-    const rowStatus = extractNote(p.notes, 'Status') || '🟡 Pending';
+    const rowStatus = normalizeStatus(extractNote(p.notes, 'Status')) || '🟡 Pending';
     if (filterStatus !== 'All' && rowStatus !== filterStatus) return false;
 
     // Receiver Filter
@@ -392,7 +410,7 @@ const CustomerDetails = () => {
           next.phone_no = mPhone || '+91-';
           next.model = match.custom_model_name || '';
           next.imei_no = match.custom_imei_number || extractNote(match.notes, 'IMEI') || '';
-          next.status = extractNote(match.notes, 'Status') || '🟡 Pending';
+          next.status = normalizeStatus(extractNote(match.notes, 'Status')) || '🟡 Pending';
         } else {
           if (field === 'code') {
             next.name = '';
@@ -551,6 +569,9 @@ const CustomerDetails = () => {
                 {STATUS_OPTIONS.map((opt, i) => (
                   <option key={i} value={opt}>{opt}</option>
                 ))}
+                {!STATUS_OPTIONS.includes(formData.status) && formData.status && (
+                  <option value={formData.status}>{formData.status}</option>
+                )}
               </select>
             </div>
           </div>
@@ -734,7 +755,7 @@ const CustomerDetails = () => {
                     <td>{extractNote(p.notes, 'Delivery') || '-'}</td>
                     <td>
                       {(() => {
-                        const currentStatus = extractNote(p.notes, 'Status') || '🟡 Pending';
+                        const currentStatus = normalizeStatus(extractNote(p.notes, 'Status')) || '🟡 Pending';
                         const badgeStyle = getStatusBadgeStyle(currentStatus);
                         return (
                           <div style={{ display: 'inline-block', position: 'relative' }}>
@@ -777,6 +798,19 @@ const CustomerDetails = () => {
                                   {opt}
                                 </option>
                               ))}
+                              {!STATUS_OPTIONS.includes(currentStatus) && currentStatus && (
+                                <option 
+                                  value={currentStatus}
+                                  style={{
+                                    background: '#ffffff',
+                                    color: '#1f2937',
+                                    fontWeight: '500',
+                                    padding: '6px'
+                                  }}
+                                >
+                                  {currentStatus}
+                                </option>
+                              )}
                             </select>
                           </div>
                         );
