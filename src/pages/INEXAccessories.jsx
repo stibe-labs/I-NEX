@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchINEXItems, getNextINEXItemId, createINEXItem, updateINEXItem, deleteINEXItem, toggleINEXItemStatus, getINEXBranchConfig } from '../api/frappeClient';
-import { Plus, Save, X, Package, RefreshCw, Loader2, MoreVertical, Edit, Trash2, Power, Eye, EyeOff } from 'lucide-react';
+import { Plus, Save, X, Package, RefreshCw, Loader2, MoreVertical, Edit, Trash2, Power, Eye, EyeOff, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 
@@ -28,6 +28,35 @@ const INEXAccessories = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(null);
   const [showDisabled, setShowDisabled] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const highlightMatch = (text, query) => {
+    if (!query || !text) return text;
+    const trimmed = query.trim();
+    if (!trimmed) return text;
+    const tokens = trimmed.split(/\s+/).filter(Boolean).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (tokens.length === 0) return text;
+    const regex = new RegExp(`(${tokens.join('|')})`, 'gi');
+    const parts = String(text).split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark 
+          key={index} 
+          style={{ 
+            backgroundColor: 'rgba(254, 240, 138, 0.7)', 
+            color: 'inherit', 
+            fontWeight: 'inherit',
+            padding: '1px 3px', 
+            borderRadius: '3px' 
+          }}
+        >
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
 
   useEffect(() => {
     const handleClickOutside = () => setDropdownOpen(null);
@@ -406,153 +435,304 @@ const INEXAccessories = () => {
       )}
 
       {/* Items Table */}
-      <div className="table-container">
-        <div style={{ 
-          padding: '1rem 1.25rem', 
-          borderBottom: '1px solid rgba(0,0,0,0.05)', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center' 
-        }}>
-          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            {selectedBranch} — Items ({items.filter(item => showDisabled || !item.disabled).length})
-          </span>
-          <span style={{ 
-            fontSize: '0.8rem', 
-            padding: '0.3rem 0.75rem', 
-            borderRadius: '20px', 
-            background: 'rgba(0,0,0,0.04)',
-            color: 'var(--text-secondary)',
-            fontWeight: 500
-          }}>
-            Warehouse: {currentConfig?.warehouse}
-          </span>
-        </div>
+      {(() => {
+        const totalBranchItems = items.filter(item => showDisabled || !item.disabled);
+        const filteredItems = totalBranchItems.filter(item => {
+          if (!searchQuery.trim()) return true;
+          const tokens = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+          const code = (item.item_code || '').toLowerCase();
+          const name = (item.item_name || '').toLowerCase();
+          return tokens.every(token => code.includes(token) || name.includes(token));
+        });
 
-        {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: '0.5rem' }} />
-            <br />Loading items from ERPNext...
-          </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>ITEM NAME</th>
-                <th>ITEM GROUP</th>
-                <th>UNIT</th>
-                <th>STATUS</th>
-                <th style={{ width: '60px', textAlign: 'center' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.filter(item => showDisabled || !item.disabled).map((item, i) => (
-                <tr key={item.item_code || i} style={{ opacity: item.disabled ? 0.65 : 1 }}>
-                  <td style={{ fontWeight: 700, color: item.disabled ? 'var(--text-secondary)' : 'var(--primary-color)', letterSpacing: '0.3px' }}>
-                    {item.item_code}
-                  </td>
-                  <td style={{ fontWeight: 600 }}>{item.item_name}</td>
-                  <td>
-                    <span style={{
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '6px',
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      color: 'var(--success-color)',
-                      fontSize: '0.8rem',
-                      fontWeight: 600
-                    }}>
-                      {item.item_group}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>
-                    {item.custom_unit_qty ? (
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.custom_unit_qty}</span>
-                    ) : (
-                      'Nos'
-                    )}
-                  </td>
-                  <td>
-                    <span style={{
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '6px',
-                      background: item.disabled ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                      color: item.disabled ? 'var(--danger-color)' : 'var(--success-color)',
-                      fontSize: '0.8rem',
-                      fontWeight: 600
-                    }}>
-                      {item.disabled ? 'Disabled' : 'Enabled'}
-                    </span>
-                  </td>
-                  <td style={{ position: 'relative', textAlign: 'center' }}>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDropdownOpen(dropdownOpen === item.item_code ? null : item.item_code);
-                      }}
-                      style={{ 
-                        border: 'none', background: 'transparent', cursor: 'pointer',
-                        color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '50%' 
-                      }}
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                    {dropdownOpen === item.item_code && (
-                      <div style={{
+        return (
+          <div className="table-container">
+            <div style={{ 
+              padding: '0.85rem 1.25rem', 
+              borderBottom: '1px solid rgba(0,0,0,0.05)', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                  {selectedBranch} — Items
+                </span>
+                <span style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: '12px',
+                  background: searchQuery.trim() ? 'rgba(37, 99, 235, 0.1)' : 'rgba(0,0,0,0.06)',
+                  color: searchQuery.trim() ? '#2563eb' : 'var(--text-secondary)',
+                }}>
+                  {searchQuery.trim() ? `${filteredItems.length} of ${totalBranchItems.length}` : `${totalBranchItems.length}`}
+                </span>
+                {searchQuery.trim() && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    found for "{searchQuery.trim()}"
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+                <div style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  maxWidth: '340px',
+                  minWidth: '220px'
+                }}>
+                  <Search 
+                    size={16} 
+                    style={{ 
+                      position: 'absolute', 
+                      left: '12px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)', 
+                      color: 'var(--text-secondary)',
+                      pointerEvents: 'none'
+                    }} 
+                  />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
+                    placeholder={`Search ${selectedBranch.replace('INEX ', '')} by item name or ID...`}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 2.25rem 0.55rem 2.25rem',
+                      fontSize: '0.85rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(0,0,0,0.12)',
+                      background: '#ffffff',
+                      outline: 'none',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--primary-color)';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.08)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(0,0,0,0.12)';
+                      e.target.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)';
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      title="Clear search (Esc)"
+                      style={{
                         position: 'absolute',
-                        right: '80%',
+                        right: '8px',
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        background: '#fff',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                        border: '1px solid rgba(0,0,0,0.06)',
-                        borderRadius: '8px',
-                        padding: '0.4rem',
-                        zIndex: 100,
+                        background: 'rgba(0,0,0,0.06)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
                         display: 'flex',
-                        flexDirection: 'column',
-                        minWidth: '130px'
-                      }}>
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                        padding: 0
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.12)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.06)'}
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <span style={{ 
+                  fontSize: '0.8rem', 
+                  padding: '0.35rem 0.75rem', 
+                  borderRadius: '20px', 
+                  background: 'rgba(0,0,0,0.04)',
+                  color: 'var(--text-secondary)',
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap'
+                }}>
+                  Warehouse: {currentConfig?.warehouse}
+                </span>
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: '0.5rem' }} />
+                <br />Loading items from ERPNext...
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>ITEM NAME</th>
+                    <th>ITEM GROUP</th>
+                    <th>UNIT</th>
+                    <th>STATUS</th>
+                    <th style={{ width: '60px', textAlign: 'center' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item, i) => (
+                    <tr key={item.item_code || i} style={{ opacity: item.disabled ? 0.65 : 1 }}>
+                      <td style={{ fontWeight: 700, color: item.disabled ? 'var(--text-secondary)' : 'var(--primary-color)', letterSpacing: '0.3px' }}>
+                        {highlightMatch(item.item_code, searchQuery)}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>
+                        {highlightMatch(item.item_name, searchQuery)}
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: '6px',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          color: 'var(--success-color)',
+                          fontSize: '0.8rem',
+                          fontWeight: 600
+                        }}>
+                          {item.item_group}
+                        </span>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {item.custom_unit_qty ? (
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.custom_unit_qty}</span>
+                        ) : (
+                          'Nos'
+                        )}
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: '6px',
+                          background: item.disabled ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                          color: item.disabled ? 'var(--danger-color)' : 'var(--success-color)',
+                          fontSize: '0.8rem',
+                          fontWeight: 600
+                        }}>
+                          {item.disabled ? 'Disabled' : 'Enabled'}
+                        </span>
+                      </td>
+                      <td style={{ position: 'relative', textAlign: 'center' }}>
                         <button 
-                          onClick={() => handleEditClick(item)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)' }}
-                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDropdownOpen(dropdownOpen === item.item_code ? null : item.item_code);
+                          }}
+                          style={{ 
+                            border: 'none', background: 'transparent', cursor: 'pointer',
+                            color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '50%' 
+                          }}
                         >
-                          <Edit size={14} style={{ color: 'var(--primary-color)' }} /> Edit
+                          <MoreVertical size={16} />
                         </button>
-                        <button 
-                          onClick={() => handleToggleStatus(item)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: item.disabled ? 'var(--success-color)' : '#d97706' }}
-                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <Power size={14} /> {item.disabled ? 'Enable Item' : 'Disable Item'}
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteClick(item.item_code)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--danger-color)' }}
-                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
-                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {items.filter(item => showDisabled || !item.disabled).length === 0 && (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                    No {!showDisabled ? 'active ' : ''}items found for {selectedBranch}.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+                        {dropdownOpen === item.item_code && (
+                          <div style={{
+                            position: 'absolute',
+                            right: '80%',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: '#fff',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                            border: '1px solid rgba(0,0,0,0.06)',
+                            borderRadius: '8px',
+                            padding: '0.4rem',
+                            zIndex: 100,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minWidth: '130px'
+                          }}>
+                            <button 
+                              onClick={() => handleEditClick(item)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)' }}
+                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Edit size={14} style={{ color: 'var(--primary-color)' }} /> Edit
+                            </button>
+                            <button 
+                              onClick={() => handleToggleStatus(item)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: item.disabled ? 'var(--success-color)' : '#d97706' }}
+                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Power size={14} /> {item.disabled ? 'Enable Item' : 'Disable Item'}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteClick(item.item_code)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--danger-color)' }}
+                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredItems.length === 0 && (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
+                        {searchQuery.trim() ? (
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+                            <div style={{
+                              width: '46px',
+                              height: '46px',
+                              borderRadius: '50%',
+                              background: 'rgba(0,0,0,0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--text-secondary)'
+                            }}>
+                              <Search size={22} />
+                            </div>
+                            <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                              No items matching "{searchQuery.trim()}" in {selectedBranch}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '420px', lineHeight: 1.4 }}>
+                              No item name or item ID matches your search in this branch. Check for typos or clear the search.
+                            </div>
+                            <button 
+                              type="button"
+                              className="btn" 
+                              style={{ 
+                                marginTop: '0.5rem', 
+                                padding: '0.45rem 1rem', 
+                                fontSize: '0.85rem',
+                                background: 'var(--primary-color)',
+                                color: '#fff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem'
+                              }} 
+                              onClick={() => setSearchQuery('')}
+                            >
+                              <X size={14} /> Clear Search
+                            </button>
+                          </div>
+                        ) : (
+                          `No ${!showDisabled ? 'active ' : ''}items found for ${selectedBranch}.`
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 };
