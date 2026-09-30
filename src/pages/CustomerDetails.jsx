@@ -10,6 +10,8 @@ export const STATUS_OPTIONS = [
   '🔵 Contacted',
   '🔴 On Hold',
   '✅ Finished',
+  '🚚 Delivered',
+  '🚫 Not serviceable',
   '📦 Return'
 ];
 
@@ -19,6 +21,8 @@ export const normalizeStatus = (status) => {
   if (trimmed === 'Finished' || trimmed === '✅ Finished') return '✅ Finished';
   if (trimmed === 'Contacted' || trimmed === '🔵 Contacted') return '🔵 Contacted';
   if (trimmed === 'On Hold' || trimmed === '🔴 On Hold') return '🔴 On Hold';
+  if (trimmed === 'Delivered' || trimmed === '🚚 Delivered' || /delivered/i.test(trimmed)) return '🚚 Delivered';
+  if (trimmed === 'Not serviceable' || trimmed === '🚫 Not serviceable' || /not\s*serviceable/i.test(trimmed)) return '🚫 Not serviceable';
   if (trimmed === 'Return' || trimmed === 'Returned' || trimmed === '📦 Return' || trimmed === '📦 Returned') return '📦 Return';
   // All other old statuses (e.g. 'Ready for Pickup', 'In Progress', 'Waiting for Parts', 'Follow-up', etc.) refresh to '🟡 Pending'
   return '🟡 Pending';
@@ -29,11 +33,17 @@ export const getStatusBadgeStyle = (status) => {
   if (s.includes('Finished')) {
     return { background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' };
   }
+  if (s.includes('Delivered')) {
+    return { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' };
+  }
   if (s.includes('Contacted')) {
     return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
   }
   if (s.includes('On Hold')) {
     return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' };
+  }
+  if (s.includes('Not serviceable') || /not\s*serviceable/i.test(s)) {
+    return { background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3' };
   }
   if (s.includes('Return')) {
     return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' };
