@@ -1090,7 +1090,7 @@ export const fetchINEXItems = async (prefix, warehouse) => {
     // Run parallel requests: Item catalog + Stock Ledger Entries for target warehouse
     const [itemRes, sleRes] = await Promise.all([
       fetch(
-        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty"]&limit_page_length=0&order_by=item_code asc`,
+        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","creation","modified"]&limit_page_length=0&order_by=creation desc`,
         { headers: getHeaders(), credentials: 'omit' }
       ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []),
 
@@ -1192,6 +1192,13 @@ export const fetchINEXItems = async (prefix, warehouse) => {
         }
       }
     }
+    // Sort latest entry first (newest created in Frappe at the top)
+    result.sort((a, b) => {
+      const timeA = a.creation ? new Date(a.creation).getTime() : 0;
+      const timeB = b.creation ? new Date(b.creation).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.item_code || '').localeCompare(a.item_code || '');
+    });
 
     return result;
   } catch (error) {

@@ -445,6 +445,14 @@ const INEXAccessories = () => {
           return tokens.every(token => code.includes(token) || name.includes(token));
         });
 
+        // Ensure latest entries appear first (newest created in Frappe at the top)
+        const sortedItems = [...filteredItems].sort((a, b) => {
+          const timeA = a.creation ? new Date(a.creation).getTime() : 0;
+          const timeB = b.creation ? new Date(b.creation).getTime() : 0;
+          if (timeB !== timeA) return timeB - timeA;
+          return (b.item_code || '').localeCompare(a.item_code || '');
+        });
+
         return (
           <div className="table-container">
             <div style={{ 
@@ -583,7 +591,7 @@ const INEXAccessories = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((item, i) => (
+                  {sortedItems.map((item, i) => (
                     <tr key={item.item_code || i} style={{ opacity: item.disabled ? 0.65 : 1 }}>
                       <td style={{ fontWeight: 700, color: item.disabled ? 'var(--text-secondary)' : 'var(--primary-color)', letterSpacing: '0.3px' }}>
                         {highlightMatch(item.item_code, searchQuery)}
@@ -680,7 +688,7 @@ const INEXAccessories = () => {
                       </td>
                     </tr>
                   ))}
-                  {filteredItems.length === 0 && (
+                  {sortedItems.length === 0 && (
                     <tr>
                       <td colSpan="6" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
                         {searchQuery.trim() ? (
