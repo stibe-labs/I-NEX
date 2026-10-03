@@ -1087,15 +1087,20 @@ export const fetchINEXItems = async (prefix, warehouse) => {
   try {
     const targetWh = warehouse || (prefix === 'IT' ? 'Stores - IT' : 'Stores - IA');
 
-    // Run parallel requests: Item catalog + Stock Ledger Entries for target warehouse
-    const [itemRes, sleRes] = await Promise.all([
+    // Run parallel requests: Item catalog + Stock Ledger Entries for target warehouse + Item Prices
+    const [itemRes, sleRes, priceRes] = await Promise.all([
       fetch(
-        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","creation","modified"]&limit_page_length=0&order_by=creation desc`,
+        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
         { headers: getHeaders(), credentials: 'omit' }
       ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []),
 
       fetch(
         `${API_URL}/api/resource/Stock Ledger Entry?filters=[["warehouse","=","${encodeURIComponent(targetWh)}"],["is_cancelled","=",0]]&fields=["item_code","actual_qty"]&limit_page_length=0`,
+        { headers: getHeaders(), credentials: 'omit' }
+      ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []),
+
+      fetch(
+        `${API_URL}/api/resource/Item Price?limit_page_length=0&fields=["name","item_code","price_list","price_list_rate","buying","selling"]`,
         { headers: getHeaders(), credentials: 'omit' }
       ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => [])
     ]);
@@ -1105,6 +1110,21 @@ export const fetchINEXItems = async (prefix, warehouse) => {
     for (const it of itemRes) {
       if (it.item_code) itemMap.set(it.item_code.toLowerCase(), it);
       if (it.name) itemMap.set(it.name.toLowerCase(), it);
+    }
+
+    // Build Item Price lookup maps
+    const buyingPriceMap = new Map();
+    const sellingPriceMap = new Map();
+    for (const p of priceRes) {
+      if (!p.item_code) continue;
+      const key = p.item_code.toLowerCase().trim();
+      const rate = parseFloat(p.price_list_rate) || 0;
+      if (p.price_list === 'Standard Buying' || p.buying === 1) {
+        buyingPriceMap.set(key, rate);
+      }
+      if (p.price_list === 'Standard Selling' || p.selling === 1) {
+        sellingPriceMap.set(key, rate);
+      }
     }
 
     // Compute active stock balance per item in target warehouse
@@ -1125,6 +1145,13 @@ export const fetchINEXItems = async (prefix, warehouse) => {
       if (liveQty !== undefined && liveQty > 0) {
         it.custom_unit_qty = liveQty.toString();
       }
+      const codeKey = (it.item_code || it.name || '').toLowerCase().trim();
+      it.purchase_price = buyingPriceMap.has(codeKey)
+        ? buyingPriceMap.get(codeKey)
+        : (parseFloat(it.last_purchase_rate) || parseFloat(it.valuation_rate) || 0);
+      it.selling_price = sellingPriceMap.has(codeKey)
+        ? sellingPriceMap.get(codeKey)
+        : (parseFloat(it.standard_rate) || 0);
       return it;
     };
 
@@ -1229,15 +1256,63 @@ export const getNextINEXItemId = async (prefix) => {
   }
 };
 
-export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company }) => {
+export const setItemPrice = async ({ itemCode, priceList, rate }) => {
+  const numRate = parseFloat(rate);
+  if (isNaN(numRate)) return null;
+
+  try {
+    const isBuying = priceList.toLowerCase().includes('buying');
+    const checkRes = await fetch(
+      `${API_URL}/api/resource/Item Price?filters=[["item_code","=","${encodeURIComponent(itemCode)}"],["price_list","=","${encodeURIComponent(priceList)}"]]&fields=["name","price_list_rate"]`,
+      { headers: getHeaders(), credentials: 'omit' }
+    );
+    const existing = checkRes.ok ? await checkRes.json() : { data: [] };
+
+    if (existing.data && existing.data.length > 0) {
+      const docName = existing.data[0].name;
+      const updateRes = await fetch(`${API_URL}/api/resource/Item Price/${encodeURIComponent(docName)}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        credentials: 'omit',
+        body: JSON.stringify({ price_list_rate: numRate })
+      });
+      return updateRes.ok ? await updateRes.json() : null;
+    } else {
+      const createRes = await fetch(`${API_URL}/api/resource/Item Price`, {
+        method: 'POST',
+        headers: getHeaders(),
+        credentials: 'omit',
+        body: JSON.stringify({
+          item_code: itemCode,
+          price_list: priceList,
+          price_list_rate: numRate,
+          buying: isBuying ? 1 : 0,
+          selling: isBuying ? 0 : 1,
+          currency: 'INR'
+        })
+      });
+      return createRes.ok ? await createRes.json() : null;
+    }
+  } catch (err) {
+    console.warn(`Could not set ${priceList} for ${itemCode}`, err);
+    return null;
+  }
+};
+
+export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company, purchasePrice, sellingPrice }) => {
   try {
     const itemCompany = company || (warehouse === 'Stores - IT' ? 'INEX Thodupuzha' : 'INEX Accessories');
+    const numPurchase = parseFloat(purchasePrice) || 0;
+    const numSelling = parseFloat(sellingPrice) || 0;
+
     const payload = {
       item_code: itemCode,
       item_name: itemName,
       item_group: 'Products',
       stock_uom: uom || 'Nos',
       is_stock_item: 1,
+      standard_rate: numSelling,
+      valuation_rate: numPurchase,
       item_defaults: [
         {
           company: itemCompany,
@@ -1288,16 +1363,35 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
       }
     }
 
+    const finalCode = created.item_code || created.name || itemCode.trim();
+
+    // Set prices in Item Price
+    if (purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== '') {
+      await setItemPrice({
+        itemCode: finalCode,
+        priceList: 'Standard Buying',
+        rate: purchasePrice
+      });
+    }
+
+    if (sellingPrice !== undefined && sellingPrice !== null && sellingPrice !== '') {
+      await setItemPrice({
+        itemCode: finalCode,
+        priceList: 'Standard Selling',
+        rate: sellingPrice
+      });
+    }
+
     // Automatically generate Stock Entry (Material Receipt) if quantity > 0
     // so it shows in Stock Ledger Entry under the warehouse immediately
     if (quantity && parseFloat(quantity) > 0) {
-      const finalCode = created.item_code || created.name || itemCode.trim();
       try {
         await createStockReceiptForINEXItem({
           itemCode: finalCode,
           qty: quantity,
           warehouse,
-          company: itemCompany
+          company: itemCompany,
+          rate: numPurchase
         });
       } catch (steErr) {
         console.warn("Auto stock receipt warning:", steErr);
@@ -1311,10 +1405,11 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
   }
 };
 
-export const createStockReceiptForINEXItem = async ({ itemCode, qty, warehouse, company }) => {
+export const createStockReceiptForINEXItem = async ({ itemCode, qty, warehouse, company, rate }) => {
   try {
     const numQty = parseFloat(qty);
     if (!numQty || numQty <= 0) return null;
+    const numRate = parseFloat(rate) || 0;
 
     const payload = {
       doctype: 'Stock Entry',
@@ -1327,8 +1422,8 @@ export const createStockReceiptForINEXItem = async ({ itemCode, qty, warehouse, 
           item_code: itemCode,
           qty: numQty,
           t_warehouse: warehouse,
-          basic_rate: 0,
-          allow_zero_valuation_rate: 1
+          basic_rate: numRate,
+          allow_zero_valuation_rate: numRate === 0 ? 1 : 0
         }
       ]
     };
@@ -1365,15 +1460,42 @@ export const createStockReceiptForINEXItem = async ({ itemCode, qty, warehouse, 
 
 export const updateINEXItem = async (itemCode, updateData) => {
   try {
+    const itemPayload = {};
+    if (updateData.item_name !== undefined) itemPayload.item_name = updateData.item_name;
+    if (updateData.custom_unit_qty !== undefined) itemPayload.custom_unit_qty = updateData.custom_unit_qty;
+    if (updateData.disabled !== undefined) itemPayload.disabled = updateData.disabled;
+    if (updateData.selling_price !== undefined && updateData.selling_price !== '') {
+      itemPayload.standard_rate = parseFloat(updateData.selling_price) || 0;
+    }
+    if (updateData.purchase_price !== undefined && updateData.purchase_price !== '') {
+      itemPayload.valuation_rate = parseFloat(updateData.purchase_price) || 0;
+    }
+
     const res = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
       method: 'PUT',
       headers: getHeaders(),
       credentials: 'omit',
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(itemPayload),
     });
 
     if (!res.ok) {
       throw await extractFrappeError(res, 'Failed to update INEX item');
+    }
+
+    if (updateData.purchase_price !== undefined && updateData.purchase_price !== '') {
+      await setItemPrice({
+        itemCode,
+        priceList: 'Standard Buying',
+        rate: updateData.purchase_price
+      });
+    }
+
+    if (updateData.selling_price !== undefined && updateData.selling_price !== '') {
+      await setItemPrice({
+        itemCode,
+        priceList: 'Standard Selling',
+        rate: updateData.selling_price
+      });
     }
 
     const data = await res.json();

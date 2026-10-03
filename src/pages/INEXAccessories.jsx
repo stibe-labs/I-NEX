@@ -67,7 +67,9 @@ const INEXAccessories = () => {
   const [formData, setFormData] = useState({
     custom_id: '',
     item_name: '',
-    uom: ''
+    quantity: '',
+    purchase_price: '',
+    selling_price: ''
   });
 
   const currentConfig = BRANCH_CONFIG[selectedBranch];
@@ -128,7 +130,7 @@ const INEXAccessories = () => {
   const handleSave = async () => {
     const targetId = editingItem ? editingItem.item_code : (formData.custom_id || nextId || '').trim();
     if (!targetId) {
-      toast.error('Item ID is required');
+      toast.error('Code / Item ID is required');
       return;
     }
     if (!formData.item_name.trim()) {
@@ -136,7 +138,7 @@ const INEXAccessories = () => {
       return;
     }
     if (!editingItem && items.some(it => (it.item_code || '').toLowerCase() === targetId.toLowerCase())) {
-      toast.error(`Item ID "${targetId}" already exists. Please choose a different ID.`);
+      toast.error(`Code "${targetId}" already exists. Please choose a different code.`);
       return;
     }
 
@@ -145,7 +147,9 @@ const INEXAccessories = () => {
       if (editingItem) {
         await updateINEXItem(editingItem.item_code, {
           item_name: formData.item_name.trim(),
-          custom_unit_qty: formData.uom.trim()
+          custom_unit_qty: formData.quantity ? formData.quantity.toString().trim() : '',
+          purchase_price: formData.purchase_price !== '' ? formData.purchase_price : 0,
+          selling_price: formData.selling_price !== '' ? formData.selling_price : 0
         });
         toast.success(`Item ${editingItem.item_code} updated successfully!`);
       } else {
@@ -155,14 +159,16 @@ const INEXAccessories = () => {
           uom: 'Nos',
           warehouse: currentConfig.warehouse,
           company: currentConfig.company,
-          quantity: formData.uom.trim()
+          quantity: formData.quantity ? formData.quantity.toString().trim() : '',
+          purchasePrice: formData.purchase_price !== '' ? formData.purchase_price : 0,
+          sellingPrice: formData.selling_price !== '' ? formData.selling_price : 0
         });
         toast.success(`Item ${targetId} created successfully!`);
       }
       
       setIsAdding(false);
       setEditingItem(null);
-      setFormData({ custom_id: '', item_name: '', uom: '' });
+      setFormData({ custom_id: '', item_name: '', quantity: '', purchase_price: '', selling_price: '' });
       await loadData();
       await loadNextId();
     } catch (e) {
@@ -174,8 +180,13 @@ const INEXAccessories = () => {
 
   const handleEditClick = (item) => {
     setEditingItem(item);
-    // Use custom_unit_qty as the storage for custom quantity/unit
-    setFormData({ custom_id: item.item_code, item_name: item.item_name, uom: item.custom_unit_qty || '' }); 
+    setFormData({
+      custom_id: item.item_code,
+      item_name: item.item_name || '',
+      quantity: (item.custom_unit_qty !== undefined && item.custom_unit_qty !== null && item.custom_unit_qty !== 'Nos') ? item.custom_unit_qty : '',
+      purchase_price: (item.purchase_price !== undefined && item.purchase_price !== null && Number(item.purchase_price) > 0) ? item.purchase_price : '',
+      selling_price: (item.selling_price !== undefined && item.selling_price !== null && Number(item.selling_price) > 0) ? item.selling_price : ''
+    }); 
     setIsAdding(true);
   };
 
@@ -208,7 +219,7 @@ const INEXAccessories = () => {
   const handleCancel = () => {
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ custom_id: '', item_name: '', uom: '' });
+    setFormData({ custom_id: '', item_name: '', quantity: '', purchase_price: '', selling_price: '' });
   };
 
   const handleBranchChange = (branch) => {
@@ -216,7 +227,7 @@ const INEXAccessories = () => {
     setNextId('');
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ custom_id: '', item_name: '', uom: '' });
+    setFormData({ custom_id: '', item_name: '', quantity: '', purchase_price: '', selling_price: '' });
   };
 
   return (
@@ -253,7 +264,7 @@ const INEXAccessories = () => {
               onClick={() => {
                 const prefix = currentConfig?.prefix || 'IP';
                 const defaultNext = (nextId && nextId.toUpperCase().startsWith(prefix.toUpperCase())) ? nextId : `${prefix}1`;
-                setFormData({ custom_id: defaultNext, item_name: '', uom: '' });
+                setFormData({ custom_id: defaultNext, item_name: '', quantity: '', purchase_price: '', selling_price: '' });
                 setIsAdding(true);
               }}
             >
@@ -329,9 +340,9 @@ const INEXAccessories = () => {
             {editingItem ? `Edit Item — ${editingItem.item_code}` : `New Item — ${selectedBranch}`}
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            {/* ID - Auto-generated (default), but editable */}
+            {/* Code - Auto-generated (default), but editable */}
             <div className="input-group">
-              <label>ID <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{editingItem ? '(fixed)' : '(auto, editable)'}</span></label>
+              <label>Code <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{editingItem ? '(fixed)' : '(auto, editable)'}</span></label>
               {editingItem ? (
                 <div style={{
                   padding: '0.75rem 1rem',
@@ -375,36 +386,49 @@ const INEXAccessories = () => {
               />
             </div>
 
-            {/* Item Group - Read-only */}
+            {/* Quantity */}
             <div className="input-group">
-              <label>Item Group <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>(fixed)</span></label>
-              <div style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                background: 'rgba(0,0,0,0.03)',
-                border: '1px solid rgba(0,0,0,0.08)',
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-              }}>
-                Products
-              </div>
-            </div>
-
-            {/* Unit / Quantity */}
-            <div className="input-group">
-              <label>Unit (Qty)</label>
+              <label>Quantity</label>
               <input
                 type="number"
                 className="input-field"
                 placeholder="e.g. 1, 2, 5"
-                value={formData.uom}
-                onChange={e => setFormData({ ...formData, uom: e.target.value })}
+                value={formData.quantity}
+                onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+                min="0"
+              />
+            </div>
+
+            {/* Purchase Price */}
+            <div className="input-group">
+              <label>Purchase Price (₹)</label>
+              <input
+                type="number"
+                step="any"
+                className="input-field"
+                placeholder="e.g. 150"
+                value={formData.purchase_price}
+                onChange={e => setFormData({ ...formData, purchase_price: e.target.value })}
+                min="0"
+              />
+            </div>
+
+            {/* Selling Price */}
+            <div className="input-group">
+              <label>Selling Price (₹)</label>
+              <input
+                type="number"
+                step="any"
+                className="input-field"
+                placeholder="e.g. 250"
+                value={formData.selling_price}
+                onChange={e => setFormData({ ...formData, selling_price: e.target.value })}
                 min="0"
               />
             </div>
           </div>
 
-          {/* Warehouse info */}
+          {/* Warehouse & Group info */}
           <div style={{
             marginTop: '1rem',
             padding: '0.65rem 1rem',
@@ -415,17 +439,24 @@ const INEXAccessories = () => {
             color: 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
             gap: '0.5rem'
           }}>
-            <Package size={14} style={{ color: 'var(--success-color)' }} />
-            Will be saved under warehouse: <strong style={{ color: 'var(--text-primary)' }}>{currentConfig?.warehouse}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Package size={14} style={{ color: 'var(--success-color)' }} />
+              <span>Warehouse: <strong style={{ color: 'var(--text-primary)' }}>{currentConfig?.warehouse}</strong></span>
+            </div>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Item Group: <strong style={{ color: 'var(--text-primary)' }}>Products</strong>
+            </span>
           </div>
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={isSaving} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               {isSaving ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={18} />}
-              {isSaving ? 'Creating...' : 'Save Item'}
+              {isSaving ? (editingItem ? 'Saving...' : 'Creating...') : (editingItem ? 'Update Item' : 'Save Item')}
             </button>
             <button className="btn" style={{ background: 'rgba(0,0,0,0.05)' }} onClick={handleCancel}>
               <X size={18} /> Cancel
@@ -582,115 +613,124 @@ const INEXAccessories = () => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    <th>CODE</th>
                     <th>ITEM NAME</th>
-                    <th>ITEM GROUP</th>
-                    <th>UNIT</th>
+                    <th>QUANTITY</th>
+                    <th>PURCHASE PRICE</th>
+                    <th>SELLING PRICE</th>
                     <th>STATUS</th>
                     <th style={{ width: '60px', textAlign: 'center' }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedItems.map((item, i) => (
-                    <tr key={item.item_code || i} style={{ opacity: item.disabled ? 0.65 : 1 }}>
-                      <td style={{ fontWeight: 700, color: item.disabled ? 'var(--text-secondary)' : 'var(--primary-color)', letterSpacing: '0.3px' }}>
-                        {highlightMatch(item.item_code, searchQuery)}
-                      </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {highlightMatch(item.item_name, searchQuery)}
-                      </td>
-                      <td>
-                        <span style={{
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: '6px',
-                          background: 'rgba(16, 185, 129, 0.08)',
-                          color: 'var(--success-color)',
-                          fontSize: '0.8rem',
-                          fontWeight: 600
-                        }}>
-                          {item.item_group}
-                        </span>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        {item.custom_unit_qty ? (
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.custom_unit_qty}</span>
-                        ) : (
-                          'Nos'
-                        )}
-                      </td>
-                      <td>
-                        <span style={{
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: '6px',
-                          background: item.disabled ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                          color: item.disabled ? 'var(--danger-color)' : 'var(--success-color)',
-                          fontSize: '0.8rem',
-                          fontWeight: 600
-                        }}>
-                          {item.disabled ? 'Disabled' : 'Enabled'}
-                        </span>
-                      </td>
-                      <td style={{ position: 'relative', textAlign: 'center' }}>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDropdownOpen(dropdownOpen === item.item_code ? null : item.item_code);
-                          }}
-                          style={{ 
-                            border: 'none', background: 'transparent', cursor: 'pointer',
-                            color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '50%' 
-                          }}
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-                        {dropdownOpen === item.item_code && (
-                          <div style={{
-                            position: 'absolute',
-                            right: '80%',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: '#fff',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                            border: '1px solid rgba(0,0,0,0.06)',
-                            borderRadius: '8px',
-                            padding: '0.4rem',
-                            zIndex: 100,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            minWidth: '130px'
+                  {sortedItems.map((item, i) => {
+                    const hasPurchase = item.purchase_price !== undefined && item.purchase_price !== null && Number(item.purchase_price) > 0;
+                    const hasSelling = item.selling_price !== undefined && item.selling_price !== null && Number(item.selling_price) > 0;
+                    const hasQty = item.custom_unit_qty !== undefined && item.custom_unit_qty !== null && item.custom_unit_qty !== '';
+
+                    return (
+                      <tr key={item.item_code || i} style={{ opacity: item.disabled ? 0.65 : 1 }}>
+                        <td style={{ fontWeight: 700, color: item.disabled ? 'var(--text-secondary)' : 'var(--primary-color)', letterSpacing: '0.3px' }}>
+                          {highlightMatch(item.item_code, searchQuery)}
+                        </td>
+                        <td style={{ fontWeight: 600 }}>
+                          {highlightMatch(item.item_name, searchQuery)}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>
+                          {hasQty ? (
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.custom_unit_qty}</span>
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 600, color: hasPurchase ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                          {hasPurchase ? (
+                            `₹${Number(item.purchase_price).toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(Number(item.purchase_price)) ? 0 : 2, maximumFractionDigits: 2 })}`
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 600, color: hasSelling ? 'var(--success-color, #10b981)' : 'var(--text-secondary)' }}>
+                          {hasSelling ? (
+                            `₹${Number(item.selling_price).toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(Number(item.selling_price)) ? 0 : 2, maximumFractionDigits: 2 })}`
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          <span style={{
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '6px',
+                            background: item.disabled ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                            color: item.disabled ? 'var(--danger-color)' : 'var(--success-color)',
+                            fontSize: '0.8rem',
+                            fontWeight: 600
                           }}>
-                            <button 
-                              onClick={() => handleEditClick(item)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)' }}
-                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <Edit size={14} style={{ color: 'var(--primary-color)' }} /> Edit
-                            </button>
-                            <button 
-                              onClick={() => handleToggleStatus(item)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: item.disabled ? 'var(--success-color)' : '#d97706' }}
-                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <Power size={14} /> {item.disabled ? 'Enable Item' : 'Disable Item'}
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteClick(item.item_code)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--danger-color)' }}
-                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
-                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {item.disabled ? 'Disabled' : 'Enabled'}
+                          </span>
+                        </td>
+                        <td style={{ position: 'relative', textAlign: 'center' }}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDropdownOpen(dropdownOpen === item.item_code ? null : item.item_code);
+                            }}
+                            style={{ 
+                              border: 'none', background: 'transparent', cursor: 'pointer',
+                              color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '50%' 
+                            }}
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                          {dropdownOpen === item.item_code && (
+                            <div style={{
+                              position: 'absolute',
+                              right: '80%',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: '#fff',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                              border: '1px solid rgba(0,0,0,0.06)',
+                              borderRadius: '8px',
+                              padding: '0.4rem',
+                              zIndex: 100,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              minWidth: '130px'
+                            }}>
+                              <button 
+                                onClick={() => handleEditClick(item)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)' }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Edit size={14} style={{ color: 'var(--primary-color)' }} /> Edit
+                              </button>
+                              <button 
+                                onClick={() => handleToggleStatus(item)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: item.disabled ? 'var(--success-color)' : '#d97706' }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Power size={14} /> {item.disabled ? 'Enable Item' : 'Disable Item'}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteClick(item.item_code)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--danger-color)' }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {sortedItems.length === 0 && (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
                         {searchQuery.trim() ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
                             <div style={{
