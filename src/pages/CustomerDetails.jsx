@@ -9,6 +9,7 @@ export const STATUS_OPTIONS = [
   '🟡 Pending',
   '🔵 Contacted',
   '🔴 On Hold',
+  '🟣 Waiting For Parts',
   '✅ Finished',
   '🚚 Delivered',
   '🚫 Not serviceable',
@@ -21,10 +22,11 @@ export const normalizeStatus = (status) => {
   if (trimmed === 'Finished' || trimmed === '✅ Finished') return '✅ Finished';
   if (trimmed === 'Contacted' || trimmed === '🔵 Contacted') return '🔵 Contacted';
   if (trimmed === 'On Hold' || trimmed === '🔴 On Hold') return '🔴 On Hold';
+  if (trimmed === 'Waiting for Parts' || trimmed === 'Waiting For Parts' || trimmed === '🟣 Waiting for Parts' || trimmed === '🟣 Waiting For Parts' || /waiting\s*for\s*parts/i.test(trimmed)) return '🟣 Waiting For Parts';
   if (trimmed === 'Delivered' || trimmed === '🚚 Delivered' || /delivered/i.test(trimmed)) return '🚚 Delivered';
   if (trimmed === 'Not serviceable' || trimmed === '🚫 Not serviceable' || /not\s*serviceable/i.test(trimmed)) return '🚫 Not serviceable';
   if (trimmed === 'Return' || trimmed === 'Returned' || trimmed === '📦 Return' || trimmed === '📦 Returned') return '📦 Return';
-  // All other old statuses (e.g. 'Ready for Pickup', 'In Progress', 'Waiting for Parts', 'Follow-up', etc.) refresh to '🟡 Pending'
+  // All other old statuses (e.g. 'Ready for Pickup', 'In Progress', 'Follow-up', etc.) refresh to '🟡 Pending'
   return '🟡 Pending';
 };
 
@@ -41,6 +43,9 @@ export const getStatusBadgeStyle = (status) => {
   }
   if (s.includes('On Hold')) {
     return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' };
+  }
+  if (s.includes('Waiting for Parts') || s.includes('Waiting For Parts') || /waiting\s*for\s*parts/i.test(s)) {
+    return { background: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe' };
   }
   if (s.includes('Not serviceable') || /not\s*serviceable/i.test(s)) {
     return { background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3' };
