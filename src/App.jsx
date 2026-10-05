@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { LayoutDashboard, Users, BookOpen, LogOut, Settings, Menu, X, Package, DollarSign, ShoppingCart, ChevronLeft, ChevronRight, Smartphone, Boxes } from 'lucide-react';
+import pkgVersion from '../package.json';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BranchDashboard from './pages/BranchDashboard';
@@ -145,6 +146,24 @@ const Layout = ({ children }) => {
           <button onClick={() => { closeMenu(); logout(); }} className="nav-link logout-btn mobile-logout-btn" style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <LogOut size={18} /> Logout
           </button>
+          {/* Version badge */}
+          <div style={{
+            marginTop: 'auto',
+            paddingTop: '1rem',
+            textAlign: 'center',
+            fontSize: '0.7rem',
+            color: 'var(--text-secondary)',
+            opacity: 0.55,
+            letterSpacing: '0.03em',
+            userSelect: 'none',
+            paddingBottom: '0.25rem'
+          }}>
+            {isSidebarCollapsed ? (
+              <span title={`v${pkgVersion.version}`} style={{ fontSize: '0.65rem' }}>v{pkgVersion.version}</span>
+            ) : (
+              <span>v{pkgVersion.version}</span>
+            )}
+          </div>
         </div>
       </nav>
       <div className="content-wrapper">

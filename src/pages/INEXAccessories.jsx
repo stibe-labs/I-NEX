@@ -68,6 +68,7 @@ const INEXAccessories = () => {
     custom_id: '',
     item_name: '',
     quantity: '',
+    supplier_name: '',
     purchase_price: '',
     selling_price: ''
   });
@@ -148,6 +149,7 @@ const INEXAccessories = () => {
         await updateINEXItem(editingItem.item_code, {
           item_name: formData.item_name.trim(),
           custom_unit_qty: formData.quantity ? formData.quantity.toString().trim() : '',
+          supplier_name: formData.supplier_name,
           purchase_price: formData.purchase_price !== '' ? formData.purchase_price : 0,
           selling_price: formData.selling_price !== '' ? formData.selling_price : 0
         });
@@ -160,6 +162,7 @@ const INEXAccessories = () => {
           warehouse: currentConfig.warehouse,
           company: currentConfig.company,
           quantity: formData.quantity ? formData.quantity.toString().trim() : '',
+          supplierName: formData.supplier_name,
           purchasePrice: formData.purchase_price !== '' ? formData.purchase_price : 0,
           sellingPrice: formData.selling_price !== '' ? formData.selling_price : 0
         });
@@ -168,7 +171,7 @@ const INEXAccessories = () => {
       
       setIsAdding(false);
       setEditingItem(null);
-      setFormData({ custom_id: '', item_name: '', quantity: '', purchase_price: '', selling_price: '' });
+      setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
       await loadData();
       await loadNextId();
     } catch (e) {
@@ -184,6 +187,7 @@ const INEXAccessories = () => {
       custom_id: item.item_code,
       item_name: item.item_name || '',
       quantity: (item.custom_unit_qty !== undefined && item.custom_unit_qty !== null && item.custom_unit_qty !== 'Nos') ? item.custom_unit_qty : '',
+      supplier_name: item.custom_supplier_name || '',
       purchase_price: (item.purchase_price !== undefined && item.purchase_price !== null && Number(item.purchase_price) > 0) ? item.purchase_price : '',
       selling_price: (item.selling_price !== undefined && item.selling_price !== null && Number(item.selling_price) > 0) ? item.selling_price : ''
     }); 
@@ -219,7 +223,7 @@ const INEXAccessories = () => {
   const handleCancel = () => {
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ custom_id: '', item_name: '', quantity: '', purchase_price: '', selling_price: '' });
+    setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
   };
 
   const handleBranchChange = (branch) => {
@@ -227,7 +231,7 @@ const INEXAccessories = () => {
     setNextId('');
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ custom_id: '', item_name: '', quantity: '', purchase_price: '', selling_price: '' });
+    setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
   };
 
   return (
@@ -264,7 +268,7 @@ const INEXAccessories = () => {
               onClick={() => {
                 const prefix = currentConfig?.prefix || 'IP';
                 const defaultNext = (nextId && nextId.toUpperCase().startsWith(prefix.toUpperCase())) ? nextId : `${prefix}1`;
-                setFormData({ custom_id: defaultNext, item_name: '', quantity: '', purchase_price: '', selling_price: '' });
+                setFormData({ custom_id: defaultNext, item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
                 setIsAdding(true);
               }}
             >
@@ -396,6 +400,18 @@ const INEXAccessories = () => {
                 value={formData.quantity}
                 onChange={e => setFormData({ ...formData, quantity: e.target.value })}
                 min="0"
+              />
+            </div>
+
+            {/* Supplier Name */}
+            <div className="input-group">
+              <label>Supplier Name</label>
+              <input
+                type="text"
+                className="input-field"
+                placeholder="e.g. Samsung, Nokia"
+                value={formData.supplier_name}
+                onChange={e => setFormData({ ...formData, supplier_name: e.target.value })}
               />
             </div>
 
@@ -616,6 +632,7 @@ const INEXAccessories = () => {
                     <th>CODE</th>
                     <th>ITEM NAME</th>
                     <th>QUANTITY</th>
+                    <th>SUPPLIER NAME</th>
                     <th>PURCHASE PRICE</th>
                     <th>SELLING PRICE</th>
                     <th>STATUS</th>
@@ -639,6 +656,13 @@ const INEXAccessories = () => {
                         <td style={{ color: 'var(--text-secondary)' }}>
                           {hasQty ? (
                             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.custom_unit_qty}</span>
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                          {item.custom_supplier_name ? (
+                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.custom_supplier_name}</span>
                           ) : (
                             <span style={{ opacity: 0.5 }}>—</span>
                           )}
@@ -730,7 +754,7 @@ const INEXAccessories = () => {
                   })}
                   {sortedItems.length === 0 && (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
                         {searchQuery.trim() ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
                             <div style={{

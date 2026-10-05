@@ -1090,7 +1090,7 @@ export const fetchINEXItems = async (prefix, warehouse) => {
     // Run parallel requests: Item catalog + Stock Ledger Entries for target warehouse + Item Prices
     const [itemRes, sleRes, priceRes] = await Promise.all([
       fetch(
-        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
+        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","custom_supplier_name","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
         { headers: getHeaders(), credentials: 'omit' }
       ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []),
 
@@ -1299,7 +1299,7 @@ export const setItemPrice = async ({ itemCode, priceList, rate }) => {
   }
 };
 
-export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company, purchasePrice, sellingPrice }) => {
+export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company, purchasePrice, sellingPrice, supplierName }) => {
   try {
     const itemCompany = company || (warehouse === 'Stores - IT' ? 'INEX Thodupuzha' : 'INEX Accessories');
     const numPurchase = parseFloat(purchasePrice) || 0;
@@ -1324,6 +1324,11 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
     // Save quantity to custom_unit_qty (avoids ERPNext opening_stock ledger locks so items can be deleted freely)
     if (quantity !== undefined && quantity !== null && quantity !== '') {
       payload.custom_unit_qty = quantity.toString();
+    }
+
+    // Save supplier name to custom_supplier_name
+    if (supplierName !== undefined && supplierName !== null && supplierName !== '') {
+      payload.custom_supplier_name = supplierName.toString().trim();
     }
 
     const res = await fetch(`${API_URL}/api/resource/Item`, {
@@ -1469,6 +1474,9 @@ export const updateINEXItem = async (itemCode, updateData) => {
     }
     if (updateData.purchase_price !== undefined && updateData.purchase_price !== '') {
       itemPayload.valuation_rate = parseFloat(updateData.purchase_price) || 0;
+    }
+    if (updateData.supplier_name !== undefined) {
+      itemPayload.custom_supplier_name = updateData.supplier_name !== null ? updateData.supplier_name.toString().trim() : '';
     }
 
     const res = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
