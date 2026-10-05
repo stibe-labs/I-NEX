@@ -1092,7 +1092,14 @@ export const fetchINEXItems = async (prefix, warehouse) => {
       fetch(
         `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","custom_supplier_name","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
         { headers: getHeaders(), credentials: 'omit' }
-      ).then(r => r.ok ? r.json() : { data: [] }).then(d => d.data || []).catch(() => []),
+      ).then(async r => {
+        if (r.ok) return r.json();
+        const fallback = await fetch(
+          `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
+          { headers: getHeaders(), credentials: 'omit' }
+        );
+        return fallback.ok ? fallback.json() : { data: [] };
+      }).then(d => d.data || []).catch(() => []),
 
       fetch(
         `${API_URL}/api/resource/Stock Ledger Entry?filters=[["warehouse","=","${encodeURIComponent(targetWh)}"],["is_cancelled","=",0]]&fields=["item_code","actual_qty"]&limit_page_length=0`,

@@ -409,7 +409,6 @@ const INEXAccessories = () => {
               <input
                 type="text"
                 className="input-field"
-                placeholder="e.g. Samsung, Nokia"
                 value={formData.supplier_name}
                 onChange={e => setFormData({ ...formData, supplier_name: e.target.value })}
               />
