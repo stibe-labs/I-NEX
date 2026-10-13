@@ -8,6 +8,7 @@ import { useAuth } from '../App';
 export const STATUS_OPTIONS = [
   '🟡 Pending',
   '🔵 Contacted',
+  '🟠 Work In Progress',
   '🔴 On Hold',
   '🟣 Waiting For Parts',
   '✅ Finished',
@@ -21,12 +22,13 @@ export const normalizeStatus = (status) => {
   const trimmed = status.trim();
   if (trimmed === 'Finished' || trimmed === '✅ Finished') return '✅ Finished';
   if (trimmed === 'Contacted' || trimmed === '🔵 Contacted') return '🔵 Contacted';
+  if (trimmed === 'Work In Progress' || trimmed === 'Work in Progress' || trimmed === '🟠 Work In Progress' || trimmed === 'In Progress' || /work\s*in\s*progress/i.test(trimmed) || /in\s*progress/i.test(trimmed)) return '🟠 Work In Progress';
   if (trimmed === 'On Hold' || trimmed === '🔴 On Hold') return '🔴 On Hold';
   if (trimmed === 'Waiting for Parts' || trimmed === 'Waiting For Parts' || trimmed === '🟣 Waiting for Parts' || trimmed === '🟣 Waiting For Parts' || /waiting\s*for\s*parts/i.test(trimmed)) return '🟣 Waiting For Parts';
   if (trimmed === 'Delivered' || trimmed === '🚚 Delivered' || /delivered/i.test(trimmed)) return '🚚 Delivered';
   if (trimmed === 'Not serviceable' || trimmed === '🚫 Not serviceable' || /not\s*serviceable/i.test(trimmed)) return '🚫 Not serviceable';
   if (trimmed === 'Return' || trimmed === 'Returned' || trimmed === '📦 Return' || trimmed === '📦 Returned') return '📦 Return';
-  // All other old statuses (e.g. 'Ready for Pickup', 'In Progress', 'Follow-up', etc.) refresh to '🟡 Pending'
+  // All other old statuses (e.g. 'Ready for Pickup', 'Follow-up', etc.) refresh to '🟡 Pending'
   return '🟡 Pending';
 };
 
@@ -37,6 +39,9 @@ export const getStatusBadgeStyle = (status) => {
   }
   if (s.includes('Delivered')) {
     return { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' };
+  }
+  if (s.includes('Work In Progress') || s.includes('Work in Progress') || /work\s*in\s*progress/i.test(s) || s.includes('In Progress')) {
+    return { background: '#ffedd5', color: '#c2410c', border: '1px solid #fed7aa' };
   }
   if (s.includes('Contacted')) {
     return { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
