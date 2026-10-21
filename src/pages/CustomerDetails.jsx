@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject, deleteProject, updateProject } from '../api/frappeClient';
-import { Plus, Save, X, MoreVertical, Trash2, Edit, RefreshCw } from 'lucide-react';
+import { fetchProjects, createProject, deleteProject, updateProject, normalizeBranchName } from '../api/frappeClient';
+import { Plus, Save, X, MoreVertical, Trash2, Edit, RefreshCw, Loader2 } from 'lucide-react';
 import { useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -118,25 +118,31 @@ const CustomerDetails = () => {
     }
   };
 
-  const getNextJobCardCode = (branchName, allProjects) => {
+  const staffBranch = user?.role === 'admin' ? '' : normalizeBranchName(user?.name || '');
+
+  const getNextJobCardCode = (branchName, allProjects = []) => {
     if (!branchName) return '';
     
-    const normalizedBranch = branchName.toLowerCase().replace(/\s+/g, '');
+    const canonical = normalizeBranchName(branchName);
     const baseCodes = {
-      'inexthodupuzha': 1304,
-      'inexkaloor': 105917,
-      'inexperumbavoor': 104979
+      'INEX Thodupuzha': 1304,
+      'INEX Kaloor': 105917,
+      'INEX Perumbavoor': 104979
     };
     
-    const branchProjects = allProjects.filter(p => p.company === branchName);
+    let maxCode = baseCodes[canonical] || 0; 
     
-    let maxCode = baseCodes[normalizedBranch] || 0; 
-    
-    branchProjects.forEach(p => {
-      const codeStr = (p.project_name || '').trim().split(/\s+/)[0];
-      const codeNum = parseInt(codeStr, 10);
-      if (!isNaN(codeNum) && codeNum > maxCode) {
-        maxCode = codeNum;
+    (allProjects || []).forEach(p => {
+      const pCompany = normalizeBranchName(p.company);
+      if (pCompany === canonical) {
+        // Robust regex to extract 4-7 digit code from project name
+        const match = (p.project_name || '').trim().match(/\b(\d{4,7})\b/);
+        if (match) {
+          const codeNum = parseInt(match[1], 10);
+          if (!isNaN(codeNum) && codeNum > maxCode) {
+            maxCode = codeNum;
+          }
+        }
       }
     });
 
@@ -146,6 +152,26 @@ const CustomerDetails = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-populate Job Card Code as soon as projects load if form is open and code is empty
+  useEffect(() => {
+    if (!loading && isAdding && !editProjectId && projects.length > 0) {
+      const targetBranch = user?.role === 'admin' 
+        ? normalizeBranchName(formData.branch) 
+        : (staffBranch || normalizeBranchName(formData.branch));
+        
+      if (targetBranch && !formData.code) {
+        const nextCode = getNextJobCardCode(targetBranch, projects);
+        if (nextCode) {
+          setFormData(prev => ({
+            ...prev,
+            branch: targetBranch,
+            code: nextCode
+          }));
+        }
+      }
+    }
+  }, [loading, isAdding, editProjectId, projects, user, formData.branch, formData.code, staffBranch]);
 
   const handleSave = async () => {
     if(!formData.code || !formData.name) {
@@ -201,9 +227,11 @@ const CustomerDetails = () => {
       if (cost) dayBookNotesStr += `\nCost: ${cost}`;
       if (profit) dayBookNotesStr += `\nProfit: ${profit}`;
 
+      const resolvedBranch = normalizeBranchName(user?.role === 'admin' ? (formData.branch || 'INEX') : (staffBranch || user?.name || 'INEX'));
+
       const projectData = {
         project_name: projectName,
-        company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+        company: resolvedBranch,
         // We omit status here and add it only for new projects below
         // status: 'Open',
         expected_start_date: formData.date || undefined,
@@ -224,8 +252,9 @@ const CustomerDetails = () => {
         
         // Check if the chosen code is already taken in this branch
         const codeIsTaken = latestProjects.some(p => {
-          if (p.company !== projectData.company) return false;
-          const pCode = (p.project_name || '').trim().split(/\s+/)[0];
+          if (normalizeBranchName(p.company) !== normalizeBranchName(projectData.company)) return false;
+          const pMatch = (p.project_name || '').trim().match(/\b(\d{4,7})\b/);
+          const pCode = pMatch ? pMatch[1] : (p.project_name || '').trim().split(/\s+/)[0];
           return pCode === formData.code;
         });
         
@@ -248,7 +277,7 @@ const CustomerDetails = () => {
         date: getTodayDate(),
         code: '', name: '', phone_no: '+91-', model: '', imei_no: '',
         complaint: '', passcode: '', amount: '', receiver: '', technician: '',
-        source: '', delivery: '', branch: '', status: '🟡 Pending'
+        source: '', delivery: '', branch: staffBranch, status: '🟡 Pending'
       });
     } catch (e) {
       toast.error(e.message || "Failed to save to Frappe. See console.");
@@ -342,10 +371,10 @@ const CustomerDetails = () => {
   // Filter projects based on search term, branch, status, receiver, and technician
   const filteredProjects = projects.filter(p => {
     // Branch Filter: Branches only see their own records. Admins see all.
-    if (user?.role === 'branch' && p.company !== user?.name) return false;
+    if (user?.role === 'branch' && normalizeBranchName(p.company) !== staffBranch) return false;
     
     // Admin branch filter dropdown
-    if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
+    if (user?.role === 'admin' && filterBranch !== 'All' && normalizeBranchName(p.company) !== normalizeBranchName(filterBranch)) return false;
 
     // Status Filter
     const rowStatus = normalizeStatus(extractNote(p.notes, 'Status')) || '🟡 Pending';
@@ -431,9 +460,9 @@ const CustomerDetails = () => {
   };
 
   const handleClear = () => {
-    const initialBranch = user?.role === 'admin' ? '' : (user?.name || '');
+    const initialBranch = user?.role === 'admin' ? '' : (staffBranch || '');
     let nextCode = '';
-    if (initialBranch) {
+    if (initialBranch && projects.length > 0) {
       nextCode = getNextJobCardCode(initialBranch, projects);
     }
     setFormData({
@@ -446,8 +475,8 @@ const CustomerDetails = () => {
   };
 
   const visibleProjectsForDropdowns = user?.role === 'branch' 
-    ? projects.filter(p => p.company === user?.name)
-    : (filterBranch !== 'All' ? projects.filter(p => p.company === filterBranch) : projects);
+    ? projects.filter(p => normalizeBranchName(p.company) === staffBranch)
+    : (filterBranch !== 'All' ? projects.filter(p => normalizeBranchName(p.company) === normalizeBranchName(filterBranch)) : projects);
 
   const uniqueTechnicians = Array.from(new Set(visibleProjectsForDropdowns.map(p => p.custom_technician || extractNote(p.notes, 'Technician')).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const uniqueReceivers = Array.from(new Set(visibleProjectsForDropdowns.map(p => p.custom_receiver || extractNote(p.notes, 'Receiver')).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -463,9 +492,9 @@ const CustomerDetails = () => {
           </button>
           {!isAdding && (
           <button className="btn btn-primary" onClick={() => {
-            const initialBranch = user?.role === 'admin' ? '' : (user?.name || '');
+            const initialBranch = user?.role === 'admin' ? '' : (staffBranch || '');
             let nextCode = '';
-            if (initialBranch) {
+            if (initialBranch && projects.length > 0) {
                nextCode = getNextJobCardCode(initialBranch, projects);
             }
             setFormData({
@@ -505,22 +534,40 @@ const CustomerDetails = () => {
                   className="input-field" 
                   value={formData.branch} 
                   onChange={e => {
-                    const selectedBranch = e.target.value;
+                    const selectedBranch = normalizeBranchName(e.target.value);
                     const nextCode = getNextJobCardCode(selectedBranch, projects);
                     setFormData(prev => ({ ...prev, branch: selectedBranch, code: nextCode }));
                   }}
                   required
                 >
                   <option value="">Select Branch</option>
-                  {Array.from(new Set(['INEX Thodupuzha', 'INEX Kaloor', 'INEX Perumbavoor', ...projects.map(p => p.company)])).filter(Boolean).map((branch, i) => (
+                  {Array.from(new Set(['INEX Thodupuzha', 'INEX Kaloor', 'INEX Perumbavoor', ...projects.map(p => normalizeBranchName(p.company))])).filter(Boolean).map((branch, i) => (
                     <option key={i} value={branch}>{branch}</option>
                   ))}
                 </select>
               </div>
             )}
             <div className="input-group">
-              <label>Job Card Code</label>
-              <input type="text" className="input-field" value={formData.code} onChange={e => handleInputChange('code', e.target.value)} required />
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Job Card Code</span>
+                {loading && !editProjectId && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                    <Loader2 size={12} className="animate-spin" /> Generating...
+                  </span>
+                )}
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={formData.code} 
+                  placeholder={loading && !editProjectId ? "Generating code..." : "e.g. 106314"}
+                  onChange={e => handleInputChange('code', e.target.value)} 
+                  disabled={loading && !editProjectId}
+                  style={loading && !editProjectId ? { opacity: 0.75, cursor: 'wait' } : {}}
+                  required 
+                />
+              </div>
             </div>
             <div className="input-group">
               <label>Phone No</label>

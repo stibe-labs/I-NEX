@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice, enrichProjectsWithFrappeData, fetchSalesInvoiceDetails } from '../api/frappeClient';
+import { fetchProjects, createProject, updateProject, deleteProject, ensureCustomer, ensureItem, ensureExactItem, createSalesInvoice, checkSalesInvoiceExists, getLinkedSalesInvoices, cancelSalesInvoice, deleteSalesInvoice, enrichProjectsWithFrappeData, fetchSalesInvoiceDetails, normalizeBranchName } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Edit, Download, Trash2, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -95,10 +95,11 @@ const DayBook = () => {
     if (!hasDayBookData) return false;
 
     // Branch Filter: Branches only see their own records. Admins see all.
-    if (user?.role === 'branch' && p.company !== user?.name) return false;
+    const staffBranch = user?.role === 'admin' ? '' : normalizeBranchName(user?.name || '');
+    if (user?.role === 'branch' && normalizeBranchName(p.company) !== staffBranch) return false;
     
     // Admin branch filter dropdown
-    if (user?.role === 'admin' && filterBranch !== 'All' && p.company !== filterBranch) return false;
+    if (user?.role === 'admin' && filterBranch !== 'All' && normalizeBranchName(p.company) !== normalizeBranchName(filterBranch)) return false;
 
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true;
@@ -221,7 +222,7 @@ const DayBook = () => {
 
       const projectData = {
         project_name: projectName,
-        company: user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX'),
+        company: normalizeBranchName(user?.role === 'admin' ? (formData.branch || 'INEX') : (user?.name || 'INEX')),
         status: 'Completed', // Once a Day Book sale is added, status is Completed
         expected_start_date: formData.date || undefined,
         custom_model_name: formData.model_name,

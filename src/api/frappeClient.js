@@ -38,14 +38,37 @@ const extractFrappeError = async (res, defaultMsg) => {
   }
 };
 
+export const normalizeBranchName = (branchName) => {
+  if (!branchName) return '';
+  const lower = branchName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (lower.includes('kaloor')) return 'INEX Kaloor';
+  if (lower.includes('perumbavoor') || lower.includes('perumbavur')) return 'INEX Perumbavoor';
+  if (lower.includes('thodupuzha')) return 'INEX Thodupuzha';
+  if (lower === 'inex') return 'INEX';
+  return branchName.trim();
+};
+
 export const fetchProjects = async () => {
   try {
-    const res = await fetch(`${API_URL}/api/resource/Project?fields=["*"]&limit_page_length=0&order_by=creation desc`, {
+    const fields = JSON.stringify([
+      "name", "project_name", "company", "creation", "status", "notes",
+      "expected_start_date", "custom_phone", "custom_model_name", "custom_imei_number",
+      "total_billed_amount", "total_costing_amount"
+    ]);
+    const res = await fetch(`${API_URL}/api/resource/Project?fields=${encodeURIComponent(fields)}&limit_page_length=0&order_by=creation desc`, {
       headers: getHeaders(),
       credentials: 'omit',
     });
-    const data = await res.json();
-    return data.data || [];
+    if (res.ok) {
+      const data = await res.json();
+      return data.data || [];
+    }
+    // Fallback in case of unexpected field change
+    const fallback = await fetch(`${API_URL}/api/resource/Project?fields=["*"]&limit_page_length=0&order_by=creation desc`, {
+      headers: getHeaders(),
+      credentials: 'omit',
+    });
+    return fallback.ok ? (await fallback.json()).data || [] : [];
   } catch (error) {
     console.error("Error fetching Projects", error);
     return [];
