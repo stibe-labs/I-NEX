@@ -311,6 +311,12 @@ const PurchaseOrder = () => {
   };
 
   const handleEdit = (invoice, code, custName) => {
+    const rawMop = extractNote(invoice.remarks, 'Mode of Payment') || '';
+    let normalizedMop = rawMop;
+    if (/^cash$/i.test(rawMop)) normalizedMop = 'Cash';
+    else if (/^bank$/i.test(rawMop)) normalizedMop = 'Bank';
+    else if (/^credit$/i.test(rawMop)) normalizedMop = 'Credit';
+
     setFormData({
       date: invoice.posting_date || getTodayDate(),
       code: code,
@@ -320,7 +326,7 @@ const PurchaseOrder = () => {
       qty: extractNote(invoice.remarks, 'Quantity') || '',
       purchase_price: extractNote(invoice.remarks, 'Purchase Price') || '',
       total_amount: invoice.grand_total || '',
-      mode_of_payment: extractNote(invoice.remarks, 'Mode of Payment') || '',
+      mode_of_payment: normalizedMop,
       remarks: extractNote(invoice.remarks, 'Remarks') || '',
       branch: invoice.company || ''
     });
@@ -499,7 +505,19 @@ const PurchaseOrder = () => {
             </div>
             <div className="input-group">
               <label>Mode of Payment</label>
-              <input type="text" className="input-field" value={formData.mode_of_payment} onChange={e => handleInputChange('mode_of_payment', e.target.value)} />
+              <select 
+                className="input-field" 
+                value={formData.mode_of_payment} 
+                onChange={e => handleInputChange('mode_of_payment', e.target.value)}
+              >
+                <option value="">Select Mode of Payment</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank</option>
+                <option value="Credit">Credit</option>
+                {formData.mode_of_payment && !['Cash', 'Bank', 'Credit'].includes(formData.mode_of_payment) && (
+                  <option value={formData.mode_of_payment}>{formData.mode_of_payment}</option>
+                )}
+              </select>
             </div>
             <div className="input-group">
               <label>Remarks</label>
