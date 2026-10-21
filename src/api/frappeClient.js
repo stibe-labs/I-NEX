@@ -1090,12 +1090,12 @@ export const fetchINEXItems = async (prefix, warehouse) => {
     // Run parallel requests: Item catalog + Stock Ledger Entries for target warehouse + Item Prices
     const [itemRes, sleRes, priceRes] = await Promise.all([
       fetch(
-        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","custom_supplier_name","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
+        `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","custom_supplier_name","custom_payment","custom_courier_charge","custom_tax","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
         { headers: getHeaders(), credentials: 'omit' }
       ).then(async r => {
         if (r.ok) return r.json();
         const fallback = await fetch(
-          `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
+          `${API_URL}/api/resource/Item?fields=["name","item_code","item_name","item_group","stock_uom","disabled","custom_unit_qty","custom_supplier_name","creation","modified","standard_rate","valuation_rate","last_purchase_rate"]&limit_page_length=0&order_by=creation desc`,
           { headers: getHeaders(), credentials: 'omit' }
         );
         return fallback.ok ? fallback.json() : { data: [] };
@@ -1306,7 +1306,7 @@ export const setItemPrice = async ({ itemCode, priceList, rate }) => {
   }
 };
 
-export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company, purchasePrice, sellingPrice, supplierName }) => {
+export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quantity, company, purchasePrice, sellingPrice, supplierName, payment, courierCharge, tax }) => {
   try {
     const itemCompany = company || (warehouse === 'Stores - IT' ? 'INEX Thodupuzha' : 'INEX Accessories');
     const numPurchase = parseFloat(purchasePrice) || 0;
@@ -1336,6 +1336,21 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
     // Save supplier name to custom_supplier_name
     if (supplierName !== undefined && supplierName !== null && supplierName !== '') {
       payload.custom_supplier_name = supplierName.toString().trim();
+    }
+
+    // Save payment status to custom_payment
+    if (payment !== undefined && payment !== null && payment !== '') {
+      payload.custom_payment = payment.toString().trim();
+    }
+
+    // Save courier charge to custom_courier_charge
+    if (courierCharge !== undefined && courierCharge !== null && courierCharge !== '') {
+      payload.custom_courier_charge = courierCharge.toString().trim();
+    }
+
+    // Save tax to custom_tax
+    if (tax !== undefined && tax !== null && tax !== '') {
+      payload.custom_tax = tax.toString().trim();
     }
 
     const res = await fetch(`${API_URL}/api/resource/Item`, {
@@ -1484,6 +1499,15 @@ export const updateINEXItem = async (itemCode, updateData) => {
     }
     if (updateData.supplier_name !== undefined) {
       itemPayload.custom_supplier_name = updateData.supplier_name !== null ? updateData.supplier_name.toString().trim() : '';
+    }
+    if (updateData.payment !== undefined) {
+      itemPayload.custom_payment = updateData.payment !== null ? updateData.payment.toString().trim() : '';
+    }
+    if (updateData.courier_charge !== undefined) {
+      itemPayload.custom_courier_charge = updateData.courier_charge !== null ? updateData.courier_charge.toString().trim() : '';
+    }
+    if (updateData.tax !== undefined) {
+      itemPayload.custom_tax = updateData.tax !== null ? updateData.tax.toString().trim() : '';
     }
 
     const res = await fetch(`${API_URL}/api/resource/Item/${encodeURIComponent(itemCode)}`, {

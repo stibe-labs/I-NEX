@@ -70,7 +70,10 @@ const INEXAccessories = () => {
     quantity: '',
     supplier_name: '',
     purchase_price: '',
-    selling_price: ''
+    selling_price: '',
+    payment: '',
+    courier_charge: '',
+    tax: ''
   });
 
   const currentConfig = BRANCH_CONFIG[selectedBranch];
@@ -151,7 +154,10 @@ const INEXAccessories = () => {
           custom_unit_qty: formData.quantity ? formData.quantity.toString().trim() : '',
           supplier_name: formData.supplier_name,
           purchase_price: formData.purchase_price !== '' ? formData.purchase_price : 0,
-          selling_price: formData.selling_price !== '' ? formData.selling_price : 0
+          selling_price: formData.selling_price !== '' ? formData.selling_price : 0,
+          payment: formData.payment,
+          courier_charge: formData.courier_charge,
+          tax: formData.tax
         });
         toast.success(`Item ${editingItem.item_code} updated successfully!`);
       } else {
@@ -164,14 +170,17 @@ const INEXAccessories = () => {
           quantity: formData.quantity ? formData.quantity.toString().trim() : '',
           supplierName: formData.supplier_name,
           purchasePrice: formData.purchase_price !== '' ? formData.purchase_price : 0,
-          sellingPrice: formData.selling_price !== '' ? formData.selling_price : 0
+          sellingPrice: formData.selling_price !== '' ? formData.selling_price : 0,
+          payment: formData.payment,
+          courierCharge: formData.courier_charge,
+          tax: formData.tax
         });
         toast.success(`Item ${targetId} created successfully!`);
       }
       
       setIsAdding(false);
       setEditingItem(null);
-      setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
+      setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '', payment: '', courier_charge: '', tax: '' });
       await loadData();
       await loadNextId();
     } catch (e) {
@@ -189,7 +198,10 @@ const INEXAccessories = () => {
       quantity: (item.custom_unit_qty !== undefined && item.custom_unit_qty !== null && item.custom_unit_qty !== 'Nos') ? item.custom_unit_qty : '',
       supplier_name: item.custom_supplier_name || '',
       purchase_price: (item.purchase_price !== undefined && item.purchase_price !== null && Number(item.purchase_price) > 0) ? item.purchase_price : '',
-      selling_price: (item.selling_price !== undefined && item.selling_price !== null && Number(item.selling_price) > 0) ? item.selling_price : ''
+      selling_price: (item.selling_price !== undefined && item.selling_price !== null && Number(item.selling_price) > 0) ? item.selling_price : '',
+      payment: item.custom_payment || '',
+      courier_charge: (item.custom_courier_charge !== undefined && item.custom_courier_charge !== null) ? item.custom_courier_charge : '',
+      tax: item.custom_tax || ''
     }); 
     setIsAdding(true);
   };
@@ -223,7 +235,7 @@ const INEXAccessories = () => {
   const handleCancel = () => {
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
+    setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '', payment: '', courier_charge: '', tax: '' });
   };
 
   const handleBranchChange = (branch) => {
@@ -231,7 +243,7 @@ const INEXAccessories = () => {
     setNextId('');
     setIsAdding(false);
     setEditingItem(null);
-    setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
+    setFormData({ custom_id: '', item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '', payment: '', courier_charge: '', tax: '' });
   };
 
   return (
@@ -268,7 +280,7 @@ const INEXAccessories = () => {
               onClick={() => {
                 const prefix = currentConfig?.prefix || 'IP';
                 const defaultNext = (nextId && nextId.toUpperCase().startsWith(prefix.toUpperCase())) ? nextId : `${prefix}1`;
-                setFormData({ custom_id: defaultNext, item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '' });
+                setFormData({ custom_id: defaultNext, item_name: '', quantity: '', supplier_name: '', purchase_price: '', selling_price: '', payment: '', courier_charge: '', tax: '' });
                 setIsAdding(true);
               }}
             >
@@ -441,6 +453,47 @@ const INEXAccessories = () => {
                 min="0"
               />
             </div>
+
+            {/* Payment Dropdown */}
+            <div className="input-group">
+              <label>Payment</label>
+              <select
+                className="input-field"
+                value={formData.payment ? (formData.payment.toLowerCase() === 'credit' ? 'Credit' : 'Paid') : ''}
+                onChange={e => setFormData({ ...formData, payment: e.target.value })}
+                style={{ background: '#ffffff', cursor: 'pointer' }}
+              >
+                <option value="">Select Payment</option>
+                <option value="Credit">Credit</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+
+            {/* Courier Charge */}
+            <div className="input-group">
+              <label>Courier Charge (₹)</label>
+              <input
+                type="number"
+                step="any"
+                className="input-field"
+                placeholder="e.g. 50"
+                value={formData.courier_charge}
+                onChange={e => setFormData({ ...formData, courier_charge: e.target.value })}
+                min="0"
+              />
+            </div>
+
+            {/* Tax */}
+            <div className="input-group">
+              <label>Tax</label>
+              <input
+                type="text"
+                className="input-field"
+                placeholder="e.g. 18% or ₹50"
+                value={formData.tax}
+                onChange={e => setFormData({ ...formData, tax: e.target.value })}
+              />
+            </div>
           </div>
 
           {/* Warehouse & Group info */}
@@ -488,7 +541,9 @@ const INEXAccessories = () => {
           const tokens = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
           const code = (item.item_code || '').toLowerCase();
           const name = (item.item_name || '').toLowerCase();
-          return tokens.every(token => code.includes(token) || name.includes(token));
+          const supplier = (item.custom_supplier_name || '').toLowerCase();
+          const payment = (item.custom_payment || '').toLowerCase();
+          return tokens.every(token => code.includes(token) || name.includes(token) || supplier.includes(token) || payment.includes(token));
         });
 
         // Ensure latest entries appear first (newest created in Frappe at the top)
@@ -634,6 +689,9 @@ const INEXAccessories = () => {
                     <th>SUPPLIER NAME</th>
                     <th>PURCHASE PRICE</th>
                     <th>SELLING PRICE</th>
+                    <th>PAYMENT</th>
+                    <th>COURIER CHARGE</th>
+                    <th>TAX</th>
                     <th>STATUS</th>
                     <th style={{ width: '60px', textAlign: 'center' }}></th>
                   </tr>
@@ -676,6 +734,46 @@ const INEXAccessories = () => {
                         <td style={{ fontWeight: 600, color: hasSelling ? 'var(--success-color, #10b981)' : 'var(--text-secondary)' }}>
                           {hasSelling ? (
                             `₹${Number(item.selling_price).toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(Number(item.selling_price)) ? 0 : 2, maximumFractionDigits: 2 })}`
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          {item.custom_payment ? (
+                            <span style={{
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '6px',
+                              background: item.custom_payment.toLowerCase() === 'paid' 
+                                ? 'rgba(16, 185, 129, 0.1)' 
+                                : 'rgba(239, 68, 68, 0.1)',
+                              color: item.custom_payment.toLowerCase() === 'paid' 
+                                ? 'var(--success-color, #10b981)' 
+                                : 'var(--danger-color, #ef4444)',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              textTransform: 'capitalize',
+                              display: 'inline-block'
+                            }}>
+                              {item.custom_payment.toLowerCase() === 'paid' ? 'Paid' : 'Credit'}
+                            </span>
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                          {item.custom_courier_charge !== undefined && item.custom_courier_charge !== null && item.custom_courier_charge !== '' ? (
+                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                              ₹{Number(item.custom_courier_charge) ? Number(item.custom_courier_charge).toLocaleString('en-IN') : item.custom_courier_charge}
+                            </span>
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                          {item.custom_tax ? (
+                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                              {item.custom_tax}
+                            </span>
                           ) : (
                             <span style={{ opacity: 0.5 }}>—</span>
                           )}
@@ -753,7 +851,7 @@ const INEXAccessories = () => {
                   })}
                   {sortedItems.length === 0 && (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
+                      <td colSpan="11" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
                         {searchQuery.trim() ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
                             <div style={{
