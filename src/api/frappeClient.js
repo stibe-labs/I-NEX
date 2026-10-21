@@ -48,6 +48,84 @@ export const normalizeBranchName = (branchName) => {
   return branchName.trim();
 };
 
+export const getNextJobCardCode = (branchName, allProjects = []) => {
+  if (!branchName) return '';
+  
+  const canonical = normalizeBranchName(branchName);
+  
+  // If no projects provided, return empty so UI shows generating state while loading
+  if (!allProjects || allProjects.length === 0) {
+    return '';
+  }
+
+  let maxCode = 0; 
+  
+  allProjects.forEach(p => {
+    const pCompany = normalizeBranchName(p.company);
+    if (pCompany === canonical) {
+      const match = (p.project_name || '').trim().match(/\b(\d{4,7})\b/);
+      if (match) {
+        const codeNum = parseInt(match[1], 10);
+        if (!isNaN(codeNum) && codeNum > maxCode) {
+          maxCode = codeNum;
+        }
+      }
+    }
+  });
+
+  return maxCode > 0 ? (maxCode + 1).toString() : '';
+};
+
+// Ultra-fast dedicated fetch for the latest Job Card Code for a branch directly from ERPNext
+export const fetchLatestJobCardCode = async (branchName, existingProjects = []) => {
+  if (!branchName) return '';
+  const canonical = normalizeBranchName(branchName);
+  
+  // Instant calculation if projects are already loaded in memory
+  let knownCode = getNextJobCardCode(canonical, existingProjects);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+  try {
+    // Ultra-light query: only top 10 projects for this specific branch directly from ERPNext
+    const filters = JSON.stringify([["company", "=", canonical]]);
+    const fields = JSON.stringify(["name", "project_name", "creation"]);
+    const res = await fetch(
+      `${API_URL}/api/resource/Project?filters=${encodeURIComponent(filters)}&fields=${encodeURIComponent(fields)}&limit_page_length=10&order_by=creation desc`,
+      { headers: getHeaders(), credentials: 'omit', signal: controller.signal }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const latestBranchProjects = data.data || [];
+      if (latestBranchProjects.length > 0) {
+        const liveCode = getNextJobCardCode(canonical, latestBranchProjects);
+        if (liveCode) {
+          const numKnown = parseInt(knownCode, 10) || 0;
+          const numLive = parseInt(liveCode, 10) || 0;
+          return (numLive >= numKnown ? numLive : numKnown).toString();
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fast-fetch latest job card code", err);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  // Fallback if network failed or timed out and no projects were loaded
+  if (!knownCode) {
+    const emergencyBase = {
+      'INEX Thodupuzha': 1555,
+      'INEX Kaloor': 106315,
+      'INEX Perumbavoor': 105299
+    };
+    knownCode = (emergencyBase[canonical] || '').toString();
+  }
+
+  return knownCode;
+};
+
 export const fetchProjects = async () => {
   try {
     const fields = JSON.stringify([

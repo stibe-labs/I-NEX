@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProjects, createProject, deleteProject, updateProject, normalizeBranchName } from '../api/frappeClient';
+import { fetchProjects, createProject, deleteProject, updateProject, normalizeBranchName, getNextJobCardCode, fetchLatestJobCardCode } from '../api/frappeClient';
 import { Plus, Save, X, MoreVertical, Trash2, Edit, RefreshCw, Loader2 } from 'lucide-react';
 import { useRef } from 'react';
 import toast from 'react-hot-toast';
@@ -79,6 +79,8 @@ const CustomerDetails = () => {
   const [editProjectId, setEditProjectId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const isCodeManuallyEdited = useRef(false);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -120,33 +122,34 @@ const CustomerDetails = () => {
 
   const staffBranch = user?.role === 'admin' ? '' : normalizeBranchName(user?.name || '');
 
-  const getNextJobCardCode = (branchName, allProjects = []) => {
-    if (!branchName) return '';
-    
-    const canonical = normalizeBranchName(branchName);
-    const baseCodes = {
-      'INEX Thodupuzha': 1304,
-      'INEX Kaloor': 105917,
-      'INEX Perumbavoor': 104979
-    };
-    
-    let maxCode = baseCodes[canonical] || 0; 
-    
-    (allProjects || []).forEach(p => {
-      const pCompany = normalizeBranchName(p.company);
-      if (pCompany === canonical) {
-        // Robust regex to extract 4-7 digit code from project name
-        const match = (p.project_name || '').trim().match(/\b(\d{4,7})\b/);
-        if (match) {
-          const codeNum = parseInt(match[1], 10);
-          if (!isNaN(codeNum) && codeNum > maxCode) {
-            maxCode = codeNum;
-          }
-        }
-      }
-    });
+  const generateCodeForBranch = (targetBranch) => {
+    const canonical = normalizeBranchName(targetBranch);
+    if (!canonical) return;
 
-    return maxCode > 0 ? (maxCode + 1).toString() : '';
+    // 1. If we already have projects in memory, fill instant baseline immediately
+    if (projects.length > 0) {
+      const instant = getNextJobCardCode(canonical, projects);
+      if (instant && !isCodeManuallyEdited.current) {
+        setFormData(prev => ({
+          ...prev,
+          branch: canonical,
+          code: prev.code && isCodeManuallyEdited.current ? prev.code : instant
+        }));
+      }
+    }
+
+    // 2. High-speed branch fetch to get the absolute live number across all computers
+    setIsGeneratingCode(true);
+    fetchLatestJobCardCode(canonical, projects).then(liveCode => {
+      setIsGeneratingCode(false);
+      if (liveCode && !isCodeManuallyEdited.current) {
+        setFormData(prev => ({
+          ...prev,
+          branch: canonical,
+          code: prev.code && isCodeManuallyEdited.current ? prev.code : liveCode
+        }));
+      }
+    }).catch(() => setIsGeneratingCode(false));
   };
 
   useEffect(() => {
@@ -160,18 +163,26 @@ const CustomerDetails = () => {
         ? normalizeBranchName(formData.branch) 
         : (staffBranch || normalizeBranchName(formData.branch));
         
-      if (targetBranch && !formData.code) {
+      if (targetBranch && !isCodeManuallyEdited.current) {
         const nextCode = getNextJobCardCode(targetBranch, projects);
         if (nextCode) {
-          setFormData(prev => ({
-            ...prev,
-            branch: targetBranch,
-            code: nextCode
-          }));
+          setFormData(prev => {
+            const currentNum = parseInt(prev.code, 10) || 0;
+            const newNum = parseInt(nextCode, 10) || 0;
+            if (!prev.code || newNum > currentNum) {
+              return {
+                ...prev,
+                branch: targetBranch,
+                code: nextCode
+              };
+            }
+            return prev;
+          });
+          setIsGeneratingCode(false);
         }
       }
     }
-  }, [loading, isAdding, editProjectId, projects, user, formData.branch, formData.code, staffBranch]);
+  }, [loading, isAdding, editProjectId, projects, user, formData.branch, staffBranch]);
 
   const handleSave = async () => {
     if(!formData.code || !formData.name) {
@@ -246,24 +257,25 @@ const CustomerDetails = () => {
         await updateProject(actualEditProjectId, projectData);
         toast.success('Customer Details Updated!');
       } else {
-        // NEW PROJECT: Fetch fresh data to prevent race conditions (duplicate Job Card Codes)
-        const latestProjects = await fetchProjects();
-        const currentNextCode = getNextJobCardCode(projectData.company, latestProjects);
-        
-        // Check if the chosen code is already taken in this branch
-        const codeIsTaken = latestProjects.some(p => {
-          if (normalizeBranchName(p.company) !== normalizeBranchName(projectData.company)) return false;
+        // Fast duplicate check: check in-memory projects + fresh branch continuation number
+        let finalCode = (formData.code || '').trim();
+        const canonicalBranch = normalizeBranchName(projectData.company);
+        const codeIsTaken = projects.some(p => {
+          if (normalizeBranchName(p.company) !== canonicalBranch) return false;
           const pMatch = (p.project_name || '').trim().match(/\b(\d{4,7})\b/);
           const pCode = pMatch ? pMatch[1] : (p.project_name || '').trim().split(/\s+/)[0];
-          return pCode === formData.code;
+          return pCode === finalCode;
         });
         
-        // If the code they are trying to save is already taken, bump it
         if (codeIsTaken) {
-          projectData.project_name = `${currentNextCode} ${formData.name}`;
-          toast.success(`Job Card Code ${formData.code} is already taken. Auto-updated to ${currentNextCode} to prevent duplicates.`);
+          const liveNextCode = await fetchLatestJobCardCode(canonicalBranch, projects);
+          if (liveNextCode) {
+            finalCode = liveNextCode;
+            toast.success(`Job Card Code ${formData.code} was already taken. Auto-updated to ${liveNextCode} to prevent duplicates.`);
+          }
         }
         
+        projectData.project_name = `${finalCode} ${formData.name}`;
         projectData.status = 'Open';
         await createProject(projectData);
         toast.success('Customer Details Saved!');
@@ -271,6 +283,8 @@ const CustomerDetails = () => {
       
       // Reload and reset
       await loadData();
+      isCodeManuallyEdited.current = false;
+      setIsGeneratingCode(false);
       setIsAdding(false);
       setEditProjectId(null);
       setFormData({
@@ -323,6 +337,8 @@ const CustomerDetails = () => {
       status: normalizeStatus(extractNote(p.notes, 'Status')) || '🟡 Pending'
     });
     setEditProjectId(p.name);
+    isCodeManuallyEdited.current = false;
+    setIsGeneratingCode(false);
     setIsAdding(true);
     setOpenMenuId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -418,6 +434,10 @@ const CustomerDetails = () => {
   });
 
   const handleInputChange = (field, value) => {
+    if (field === 'code') {
+      isCodeManuallyEdited.current = true;
+      setIsGeneratingCode(false);
+    }
     setFormData(prev => {
       const next = { ...prev, [field]: value };
       
@@ -461,6 +481,7 @@ const CustomerDetails = () => {
 
   const handleClear = () => {
     const initialBranch = user?.role === 'admin' ? '' : (staffBranch || '');
+    isCodeManuallyEdited.current = false;
     let nextCode = '';
     if (initialBranch && projects.length > 0) {
       nextCode = getNextJobCardCode(initialBranch, projects);
@@ -472,6 +493,10 @@ const CustomerDetails = () => {
       status: '🟡 Pending'
     });
     setEditProjectId(null);
+
+    if (initialBranch) {
+      generateCodeForBranch(initialBranch);
+    }
   };
 
   const visibleProjectsForDropdowns = user?.role === 'branch' 
@@ -493,6 +518,7 @@ const CustomerDetails = () => {
           {!isAdding && (
           <button className="btn btn-primary" onClick={() => {
             const initialBranch = user?.role === 'admin' ? '' : (staffBranch || '');
+            isCodeManuallyEdited.current = false;
             let nextCode = '';
             if (initialBranch && projects.length > 0) {
                nextCode = getNextJobCardCode(initialBranch, projects);
@@ -506,6 +532,10 @@ const CustomerDetails = () => {
             });
             setEditProjectId(null);
             setIsAdding(true);
+
+            if (initialBranch) {
+              generateCodeForBranch(initialBranch);
+            }
           }}>
             <Plus size={18} /> Add Entry
           </button>
@@ -535,8 +565,12 @@ const CustomerDetails = () => {
                   value={formData.branch} 
                   onChange={e => {
                     const selectedBranch = normalizeBranchName(e.target.value);
+                    isCodeManuallyEdited.current = false;
                     const nextCode = getNextJobCardCode(selectedBranch, projects);
                     setFormData(prev => ({ ...prev, branch: selectedBranch, code: nextCode }));
+                    if (selectedBranch) {
+                      generateCodeForBranch(selectedBranch);
+                    }
                   }}
                   required
                 >
@@ -550,7 +584,7 @@ const CustomerDetails = () => {
             <div className="input-group">
               <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Job Card Code</span>
-                {loading && !editProjectId && (
+                {isGeneratingCode && !formData.code && !editProjectId && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
                     <Loader2 size={12} className="animate-spin" /> Generating...
                   </span>
@@ -560,13 +594,32 @@ const CustomerDetails = () => {
                 <input 
                   type="text" 
                   className="input-field" 
-                  value={formData.code} 
-                  placeholder={loading && !editProjectId ? "Generating code..." : "e.g. 106314"}
+                  value={isGeneratingCode && !formData.code && !editProjectId ? "[ Generating... ]" : formData.code} 
+                  placeholder={isGeneratingCode ? "[ Generating... ]" : "e.g. 106315"}
                   onChange={e => handleInputChange('code', e.target.value)} 
-                  disabled={loading && !editProjectId}
-                  style={loading && !editProjectId ? { opacity: 0.75, cursor: 'wait' } : {}}
+                  disabled={isGeneratingCode && !formData.code && !editProjectId}
+                  style={{
+                    paddingRight: (isGeneratingCode && !formData.code && !editProjectId) ? '36px' : undefined,
+                    cursor: (isGeneratingCode && !formData.code && !editProjectId) ? 'wait' : 'text',
+                    backgroundColor: (isGeneratingCode && !formData.code && !editProjectId) ? 'rgba(0, 0, 0, 0.04)' : undefined,
+                    color: (isGeneratingCode && !formData.code && !editProjectId) ? 'var(--primary-color, #2563eb)' : undefined,
+                    fontWeight: (isGeneratingCode && !formData.code && !editProjectId) ? 600 : undefined
+                  }}
                   required 
                 />
+                {isGeneratingCode && !formData.code && !editProjectId && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '12px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    pointerEvents: 'none' 
+                  }}>
+                    <Loader2 size={16} className="animate-spin" style={{ color: 'var(--primary-color)' }} />
+                  </div>
+                )}
               </div>
             </div>
             <div className="input-group">
