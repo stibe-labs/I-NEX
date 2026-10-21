@@ -11,7 +11,7 @@ PORT=3050
 PM2_APP_NAME="i-nex-website"
 
 echo "📥 Pulling latest code from GitHub..."
-ssh "$SERVER" "cd $REMOTE_APP && git pull origin main"
+ssh "$SERVER" "cd $REMOTE_APP && git reset --hard HEAD && git pull origin main"
 
 echo "📦 Installing dependencies on server..."
 ssh "$SERVER" "cd $REMOTE_APP && npm install"

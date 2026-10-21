@@ -2,7 +2,7 @@
 # Usage: .\deploy.ps1
 
 Write-Host "Pulling latest code from GitHub on server..."
-ssh stibe 'cd /var/www/inex-repo/I-NEX && git pull origin main'
+ssh stibe 'cd /var/www/inex-repo/I-NEX && git reset --hard HEAD && git pull origin main'
 
 Write-Host "Installing dependencies on server..."
 ssh stibe 'cd /var/www/inex-repo/I-NEX && npm install'
