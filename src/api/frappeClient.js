@@ -1510,19 +1510,20 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
       });
     }
 
-    // Automatically generate Stock Entry (Material Receipt) if quantity > 0
-    // so it shows in Stock Ledger Entry under the warehouse immediately
+    // Automatically generate Purchase Receipt if quantity > 0
+    // so it shows in Buying > Purchase Receipt and updates Stock Ledger Entry under the warehouse immediately
     if (quantity && parseFloat(quantity) > 0) {
       try {
-        await createStockReceiptForINEXItem({
+        await createPurchaseReceiptForINEXItem({
           itemCode: finalCode,
           qty: quantity,
           warehouse,
           company: itemCompany,
-          rate: numPurchase
+          rate: numPurchase,
+          supplierName: supplierName
         });
-      } catch (steErr) {
-        console.warn("Auto stock receipt warning:", steErr);
+      } catch (prErr) {
+        console.warn("Auto purchase receipt warning:", prErr);
       }
     }
 
@@ -1530,6 +1531,75 @@ export const createINEXItem = async ({ itemCode, itemName, uom, warehouse, quant
   } catch (error) {
     console.error("Error creating INEX item", error);
     throw error;
+  }
+};
+
+export const createPurchaseReceiptForINEXItem = async ({ itemCode, qty, warehouse, company, rate, supplierName }) => {
+  try {
+    const numQty = parseFloat(qty);
+    if (!numQty || numQty <= 0) return null;
+    const numRate = parseFloat(rate) || 0;
+
+    // Resolve supplier (ensure Supplier exists in Frappe or fallback to 'INEX Supplier')
+    let validSupplier = 'INEX Supplier';
+    if (supplierName && supplierName.toString().trim()) {
+      try {
+        const resolved = await ensureSupplier(supplierName.toString().trim());
+        if (resolved) validSupplier = resolved;
+      } catch (sErr) {
+        console.warn("Could not ensure supplier, falling back to INEX Supplier:", sErr);
+      }
+    }
+
+    const itemCompany = company || (warehouse === 'Stores - IT' ? 'INEX Thodupuzha' : 'INEX Accessories');
+    const today = new Date().toISOString().split('T')[0];
+
+    const payload = {
+      doctype: 'Purchase Receipt',
+      supplier: validSupplier,
+      company: itemCompany,
+      set_warehouse: warehouse,
+      posting_date: today,
+      items: [
+        {
+          item_code: itemCode,
+          qty: numQty,
+          rate: numRate,
+          warehouse: warehouse
+        }
+      ]
+    };
+
+    const res = await fetch(`${API_URL}/api/resource/Purchase Receipt`, {
+      method: 'POST',
+      headers: getHeaders(),
+      credentials: 'omit',
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      console.warn("Purchase Receipt draft creation failed", await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const receiptName = data.data?.name;
+    if (receiptName) {
+      // Submit the Purchase Receipt so it records immediately in Stock Ledger Entry & Buying > Purchase Receipt
+      const submitRes = await fetch(`${API_URL}/api/resource/Purchase Receipt/${encodeURIComponent(receiptName)}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        credentials: 'omit',
+        body: JSON.stringify({ docstatus: 1 })
+      });
+      if (!submitRes.ok) {
+        console.warn("Purchase Receipt submit warning:", await submitRes.text());
+      }
+    }
+    return data.data;
+  } catch (err) {
+    console.warn("Could not create Purchase Receipt for item " + itemCode, err);
+    return null;
   }
 };
 
